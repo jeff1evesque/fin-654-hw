@@ -1,0 +1,722 @@
+# Credit Risk
+
+## Imagine This
+
+Our company is trying to penetrate a new market. To do so it acquires several smaller competitors for your products and services. As we acquire the companies , we also acquire their customers...and now our customers' ability to pay us.
+
+- Not only that, but yowe have also taken your NewCo's supply chain. Your company also has to contend with the credit worthiness of NewCo's vendors. If they default you don't get supplied, you can't produce, you can't fulfill your customers, they walk.
+- Your CFO has handed you the job of organizing your accounts receivable, understanding your customers' paying patterns, and more importantly their defaulting patterns.
+
+Some initial questions come to mind:
+
+1. What are the key business questions you should ask about your customers' paying / defaulting patterns?
+2. What systematic approach might you use to manage customer and counterparty credit risk?
+
+Some ideas to answer these questions can be
+
+1. Key business questions might be
+- What customers and counterparties default more often than others?
+- If customer default what can we recover?
+- What is the total exposure that we experience at any given point in time?
+- How far can we go with customers that might default?
+
+2. Managing credit risk
+- Set up a scoring system to accept new customers and track existing customers
+- Monitor transitions of customers from one rating notch to another
+- Build in early warning indicators of customer and counterparty default
+- Build a playbook to manage the otherwise insurgent and unanticipated credit events that can overtake your customers and counterparties
+
+Topics we got to in the last several chapters:
+
+- Explored stylized fact of financial market data
+- Learned just how insidious volatility really is
+- Acquired new tools like `acf`, `pacf`, `ccf` to explore time series.
+
+In this chapter on credit risk We Will Use actual transaction and credit migration data to examine relationships among default and explanations of credit-worthiness.  We will also simulate default probababilities using markov chains. With this technology in hand we can then begin to Understand hazard rates and the probabality of transitioning from one credit state to another. Then we have a first stab a predicting default and generating loss distributions for portfolios of credit exposures, as in the the Newco example of the accounts receivable credit portfolio.
+
+## New customers!
+Not so fast! Let's load the credit profiles of our newly acquired customers. Here is what was collected these past few years:
+
+```{r mysize=TRUE, size='\\footnotesize'}
+firm.profile <- read.csv("data/creditfirmprofile.csv")
+head(firm.profile)
+```
+
+Recorded for each of several years from 2006 through 2015 each firm's (customer's) indicator as to whether they defaulted or not (1 or 0).
+
+```{r mysize=TRUE, size='\\footnotesize'}
+summary(firm.profile)
+```
+
+Several risk factors can contribute to credit risk:
+
+1. Working Capital risk is measured by the Working Capital / Total Assets ratio `wcTA`. 
+When this ratio is zero, current assets are matched by current liabilities. When positive (negative), current assets are greater (lesser) than current liabilities. The risk is that there are very large current assets of low quality to feed revenue cash flow. Or the risk is that there are high current liabilities balances creating a hole in the cash conversion cycle and thus a possibility of low than expected cash flow.
+
+2. Internal Funding risk is measured by the Retained Earnings / Total Assets ratio `reTA`. Retained Earnings measures the amount of net income plowed back into the organization. High ratios signal strong capability to fund projects with internally generated cash flow. The risk is that if the organization faces extreme changes in the market place, there is not enough internally generated funding to manage the change.
+
+3. Asset Profitability risk is measured by EBIT / Total Assets ratio. This is the return on assets used to value the organization. The risk is that 
+
+- EBIT is too low or even negative and thus the assets are not productively reaching revenue markets or efficiently using the supply change, or both, all resulting in too low a cash flow to sustain operations and investor expectations, and
+
+- This metric falls short of investors minimum required returns, and thus investors' expectations are dashed to the ground, they sell your stock, and with supply and demand simplicity your stock price falls, along with your equity-based compensation.
+
+
+4. Capital Structure risk is measured by the Market Value of Equity / Total Liabilities ratio `mktcapTL`.  If this ratio deviates from industry norms, or if too low, then
+shareholder claims to cash flow, and thus control of funding for responding
+to market changes will be impaired. The risk is similar to Internal Fund Risk
+but carries the additional market perception that the organization is
+unwilling or unable to manage change.
+
+5. Asset Efficiency risk is measured by the Sales / Total Assets ratio `sTA`. 
+If too low then the organization risks two things: being able to support sales with
+assets, and the overburden of unproductive assets unable to support new projects
+through additions to retained earnings or in meeting liability committments.
+
+Let's also load customer credit migration data. This data records the start rating, end rating and timing for each of 830 customers as their business, and the recession, affected them.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+firm.migration <- read.csv("data/creditmigration.csv")
+head(firm.migration)
+```
+
+Notice that the dates are given in number of days from January 1, 1900. Ratings are numerical.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+summary(firm.migration)
+firm.migration <- na.omit(firm.migration)
+##firm.migration$start.rating <- levels(firm.migration$start.rating)
+##firm.migration$end.rating <- levels(firm.migration$end.rating)
+firm.migration$time <- as.numeric(firm.migration$time)
+```
+
+An interesting metric is in `firm.migration$time`. This field has records of the difference between `end.date` and `start.date` in days between start ratings and end ratings.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+hist(firm.migration$time)
+```
+
+Let's now merge the two credit files by starting year. This will ("inner") join the data so we can see what customer conditions might be consistent with a rating change and rating dwell time. Two keys are `id` and `start.year`. The resulting data set will have records less than or equal to (if a perfect match) the maximum number of records (rows) in any input data set. 
+
+```{r mysize=TRUE, size='\\footnotesize'}
+firm.credit <- merge(firm.profile, firm.migration, by = c("id", "start.year"))
+head(firm.credit)
+dim(firm.credit)
+```
+
+### Try this exercise
+The shape of `firm.migration$time` suggests a `gamma` or an `exponential` function. But before we go off on that goose chase, let's look at the inner-joined data to see potential differences in rating. Let's reuse this code from previous work:
+
+```{r mysize=TRUE, size='\\footnotesize'}
+library(dplyr)
+
+## 1: filter to keep one state. Not needed (yet...) 
+pvt.table <-  firm.credit ## filter(firm.credit, xxx %in% "NY")
+ 
+## 2: set up data frame for by-group processing. 
+pvt.table <-  group_by(pvt.table, default, end.rating)
+ 
+## 3: calculate the three summary metrics
+options(dplyr.width = Inf) ## to display all columns
+pvt.table <-  summarise(pvt.table, time.avg = mean(time)/365, ebitTA.avg = mean(ebitTA), sTA.avg = mean(sTA))
+```
+
+Now we display the results in a nice table
+
+```{r mysize=TRUE, size='\\footnotesize'}
+knitr::kable(pvt.table)
+```
+
+Defaulting (`default` = 1)firms  have very low EBIT returns on Total Assets as well as low Sales to Total Assets... as expected. They also spent a lot of time (in 365 day years) in rating 7 -- equivalent to a "C" rating at S\&P.
+
+Now let's use the credit migration data to understand the probability of default as well as the probabilities of being in other ratings or migrating from one rating to another.
+
+## It depends
+
+Most interesting examples in probability have a little dependence added in: "If it rained yesterday, what is the probability it rains today?" We can use this idea to generate weather patterns and probabilities for some time in the future. 
+
+- In market risk, we can use this idea to generate the persistence of consumption spending, inflation, and the impact on zero coupon bond yields.
+
+- In credit, dependence can be seen in credit migration: if an account receivable was A rated this year, what are the odds this receivable be A rated next year?
+
+We will use a mathematical representation of these language statements to help us understand the dynamics of probabalistic change we so often observe in financial variables such as credit default.
+
+### Enter A.A Markov
+
+Suppose we have a sequence of $T$ observations, $\{X_t\}_{1}^{T}$, that are dependent. In a time series, what happens next can depend on what happened before:
+
+\[ p(X_1, X_2, ..., X_T) = p(X_1)p(X_2|X_1)...p(X_t|X_{t-1},...,X_1) \]
+
+Here $p(x|y)$ is probability that an event $x$ (e.g., default) occurs whenever (the vertical bar `|`) event $y$ occurs. This is the statement of conditional probability. Event $x$ depends in some way on the occurrence of $y$.
+ 
+With markov dependence each outcome `only` depends on the one that came before.
+
+\[ p(X_1, X_2, ..., X_T) = p(X_1)\prod_{s=2}^T p(X_s|X_{s-1})  \]
+
+We have already encountered this when we used the functions `acf` and `ccf` to explore very similar dependencies in macro-financial time series data. In those cases we explored the dependency of today's returns on yesterday's returns. Markov dependence is equivalent to an `AR(1)` process (today = some part of yesterday plus some noise).
+
+To generate a markov chain, we need to do three things:
+
+1. Set up the conditional distribution.
+
+2. Draw the initial state of the chain.
+
+3. For every additional draw, use the previous draw to inform the new one.
+
+Now we are a position to develop a very simple (but oftentimes useful) credit model:
+
+- If a receivable's issuer (a customer) last month was investment grade, this month's chance of also being investment grade is 80%.
+
+- If a receivable's issuer last month was **not** investment grade, this month's chance of being investment grade is 20%.
+
+### Try this exercise
+
+- We will simulate monthly for 5 years. Here we parameterize even the years and calculate the number of months in the simulation. We set up a dummy `investment.grade` variable with `NA` entries into which we deposit 60 dependent coin tosses using the binomial distribution. The probability of success (state = "Investment Grade") is overall 80% and is composed of a long run 20% (across the 60 months) plus a short run 60% (of the previous month). Again the similarity to an autoregressive process here with lags at 1 month and 60 months.
+
+Then, 
+
+1. We will run the following code. 
+2. We should look up `rbinom(n, size, prob)` (coin toss random draws) to see the syntax.
+3. We will interpret what happens when we set the `long.run` rate to 0% and the `short.run` rate to 80%.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+N.years <- 5
+N.months <- N.years*12
+investment.grade <- rep(NA, N.months)
+investment.grade[1] <- 1
+long.run <- 0.5
+short.run <- 0.0
+for (month in 2:N.months){ 
+  investment.grade[month] <- rbinom(1,1,long.run + short.run*investment.grade[month-1]) 
+  }
+hist(investment.grade)
+```
+
+The `for (month in 2:N.months)` loop says "For each month starting at month 2, perform the tasks in the curly brackets (`{}`) until, and including, `N.months`"
+
+Almost evenly ditributed probabilities occur. We plot the results.\
+
+```{r mysize=TRUE, size='\\footnotesize'}
+plot(investment.grade, main="Investment Grade", xlab="Month", ylab="IG?", ty="s")
+```
+
+Now to look at a scenario with long-run = 0.0, and short-run = 0.80
+
+```{r mysize=TRUE, size='\\footnotesize'}
+N.years <- 5
+N.months <- N.years*12
+investment.grade <- rep(NA, N.months)
+investment.grade[1] <- 1
+long.run <- 0.0  ## changed from base scenario 0.5
+short.run <- 0.8 ## changed from base scenario 0.0
+for (month in 2:N.months){ 
+  investment.grade[month] <- rbinom(1,1,long.run + short.run*investment.grade[month-1]) 
+  }
+hist(investment.grade)
+```
+
+
+The result is much different now with more probability concentrated in lower end of investment grade scale. The next plot the up and down transitions between investment grade and not-investment grade using lines to connect up to down transitions. Now this looks more like a `bull` and `bear` graph.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+plot(investment.grade, main="Investment Grade", xlab="Month", ylab="IG?", ty="l")
+```
+
+And we see how different these transitions are from a simple coin toss credit model (independence, not dependence). We could just set the long.run rate to 50% (a truly unbiased coin) and rerun, or simply run the following.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+toss.grade <- rbinom(N.months, 1, 0.5)
+plot(toss.grade, main="Investment Grades (yawn!)", xlab="Month", ylab="IG?", ty="l")
+```
+
+In our crude credit model transitions are represented as a matrix: $Q_{ij}$ is $P(X_t = j|X_{t-1} = i)$ where, $i$ is the start state ("Investment Grade"), and $j$ is the end state ("not-Investment Grade"). Here is a transition matrix to encapsulate this data.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+(transition.matrix <- matrix (c(0.8, 0.2, 0.2, 0.8), nrow=2))
+```
+
+This function will nicely simulate this and more general random Markov chains.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+rmarkovchain <- function (n.sim, 
+                          transition.matrix, 
+                          start=sample(1:nrow(transition.matrix), 1)) {
+  result <- rep (NA, n.sim)
+  result[1] <- start
+  for (t in 2:n.sim) result[t] <- 
+    sample(ncol(transition.matrix), 1, 
+           prob=transition.matrix[result[t-1],])
+  return(result)
+}
+```
+
+### Try this next exercise
+
+Let's run a 1000 trial markov chain with the 2-state `transition.matrix` and save to a variable called 'markov.sim'. Then we will use the `table` function to calculate how many 1's and 2' are simulated.
+
+Many trials (and tribulations...) follow from this code.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+markov.sim <- rmarkovchain(1000,transition.matrix)
+head(markov.sim)
+```
+
+Then we tabulate the contingency table.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+ones <- which(markov.sim[-1000]==1)
+twos <- which(markov.sim[-1000]==2)
+state.one <- signif(table(markov.sim[ones+1])/length(ones),3)
+state.two <- signif(table(markov.sim[twos+1])/length(twos),3)
+(transition.matrix.sim <- rbind(state.one, state.two))
+```
+
+The result is pretty close to `transition.matrix`. The Law of large numbers would say we converge to these values. The function `which()` sets up two indexes to find where the 1's and 2's are in `markov.sim`. The function `signif()` with `3` means use 3 significant digits. The the function `table()` tabulates the number of one states and two states simulated.
+
+Next let's develop an approach to estimating transition probabilities using observed (or these could be simulated... if we are not very sure of future trends) rates of credit migration from one rating to another.
+
+## Generating Some Hazards 
+
+- Let's set up a more realistic situation. 
+- Suppose we have annual hazard rates $\lambda$ for each of 4 in-house credit ratings for a portfolio of accounts receivable. (We can use a pivot table to get these rates...) 
+- Suppose that we know the number of accounts that transition from one rating (start state) to another rating (end state) in a unit of time (here a year). 
+- We define the hazard rate $\lambda$ as the number of accounts that migrate from one rating to another rating (per year) divided by the number of all the accounts that year at that starting rating. 
+
+
+- Suppose we have $N$ ratings which in Markov-speak are states of being in a credit rating.
+- Transition probabilities are summarized by a $N$ row $\times$ $N$ column "generator" matrix  $\Lambda = (\lambda_{ij})$. Here the row index is $i = 1...N$ starting credit rating states and the column index is $j = 1...N$ ending credit rating states for a customer.
+- Over any small (and getting ever smaller...) time step of duration $dt$ the probability of a transition from rating i to j is given approximately by $\lambda_{ij} dt$. 
+- The probability of moving to any other rating from the starting rating is $\Sigma_{i \neq j}$ so that staying at rating i is given by $1 - \Sigma_{i \neq j} \lambda_{ij}$ all along the diagonal of the matrix.
+
+
+A little more formally, and usefully, we can define for transitions from a starting state rating $i$ to an ending state rating $j$ over an interval of time $s = [0,t]$, the hazard rate for $i \neq j$,
+
+\[
+\lambda_{ij} = \frac{N_{ij}}{\int_{0}^{t} Y_{i}(s) ds}
+\]
+
+where $N_{ij}$ is the number of accounts that made the transition from one rating $i$ to another, different rating $j$, and $Y_i$ is the number of accounts rated in the starting state rating $i$ at the beginning of the time interval $(t, t + dt)$. 
+
+
+The `int` sign is again (remember the term structure of interest rates) the cumulative sum of the product of the number of accounts times the time an account is in a transition from one credit rating state to another. Using this formula, the math to generate ratings migration probabilities is fairly straightforward with a couple of kinks. We will use the `expm` package to calculate the matrix exponent. The probability of transitions is $P = exp( \Lambda)$. We can think of probabilities as discounts. They range from 0 to 1 like the present value of \$1. $\lambda_{ij} dt$ is just like a forward interest rate in form as it is the change in probability (present value) from one date to another $dt$.
+
+First suppose we already know the hazard rates for each starting state rating. We will assign the `D.rating` hazard rate as a 0 throughout as this is the last state, that is, there is no transition from this rating to another rating. Then create a $\lambda$ matrix by concatenating the rows of hazard rates, and see that the diagonals are zero. 
+
+By definition, if an account stays in a rating, the diagonal must be the negative of the row sum of this matrix, where we use the apply function on the first, the row, dimension of the matrix. We put the negative row sum into the diagonal and now we have a proper hazard, or also called generator, matrix.
+
+Now, for the last step here, we raise the hazard matrix to the exponent power. The result is the probability transition matrix.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+lambda <- structure(c(-0.08179, 0.00663, 0.00060, 0.00035, 0.00029, 0, 0.000815871122518043, 0, 
+                       0.07493, -0.09300, 0.02029, 0.00200, 0.00088, 0.00076, 0, 0, 
+                       0.00515, 0.08159, -0.08697, 0.04178, 0.00441, 0.00229, 0.00408, 0,
+                       0.00114404022385915, 0.00361106546371299, 0.0615488360753306, -0.110345216529572, 0.0534942615312562, 0.00343192628444715, 0.0057110978576263, 0,
+                       0.000572020111929575, 0.000585578183304809, 0.00321930968833733, 0.0588046608464803, -0.176844582534647,  0.0531948574089309, 0.0138698090828067, 0, 
+                      0, 0.000487981819420674, 0.0012004205617529, 0.00615719390039617, 0.108360170794083, -0.190567240072496, 0.134618735215477, 0, 
+                      0, 9.75963638841349e-05, 0.000109129141977537, 0.000622637585433321, 0.00666228898191469, 0.102671794676377, -0.828109189355814, 0, 
+                      0, 0, 0, 0.000622637585433321, 0.00274329546314134, 0.0282180605610099, 0.669014320464795, 0), dim = c(8, 8), dimnames = list(c("A1", "A2", "A3", "B1", "B2", "B3", "C", "D"), c("A1","A2", "A3", "B1", "B2", "B3", "C", "D")))
+#write.csv(lambda,"data/lambdahat.csv") # To save this work
+#lambda <- read.csv("data/lambdahat.csv")
+rownames(lambda) <- c("A1", "A2", "A3", "B1", "B2", "B3", "C", "D")
+colnames(lambda) <- c("A1", "A2", "A3", "B1", "B2", "B3", "C", "D")
+dimnames(lambda) <- list(rating.names,rating.names)
+lambda.diag <-  -apply(lambda,1,sum) ## this the is rate of staying in a state
+diag(lambda) <- lambda.diag          ## this pops lambda.diag into the diagonal of lambda
+apply(lambda,1,sum)   ## should add up to zero
+P <-  expm(lambda)
+apply(P,1,sum)        ## Should be ones
+```
+
+We behold the generator matrix and its associated transition probabilities:
+
+```{r mysize=TRUE, size='\\footnotesize'}
+signif(lambda, 6)
+signif(P, 4)
+```
+
+The last row of `P` are all zeros until the last entry, the diagonal entry. It means if you are in "D" it is certain you stay in "D".
+
+Digging in we look at the non-defaulting rating distributions with thresholds for the "C" rating.
+
+First, we order the transition probabilities from worst (D) to best (A). Then take out the worst (D).
+
+```{r mysize=TRUE, size='\\footnotesize'}
+(P.reverse <- P[4:1,4:1]) ## Reorder from worst to best
+(P.reverse <- P.reverse[-1,]) ## Eliminate the D state transitions
+```
+
+Second, we compute cumulative probabilities for the C rating in the first row now. Then compute cumulative probabilities.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+(C.probs <- P.reverse[1,])
+(C.cumprobs <- pmin(0.999, pmax(0.001, cumsum(C.probs))))
+```
+
+Third, let's interpret our results through an exercise.
+
+### Try this exercise
+
+Now that we have gone this far let's run the following and answer some questions about what we did.
+
+```{r mysize=TRUE, size='\\footnotesize', eval=FALSE}
+rating.df <- 16 ## Thinking that there are 3 non-defaulting ratings being spliced together using cumulative sums to estimate hazards
+(thresholds <- qt(C.cumprobs, rating.df))
+threshold.plot <- data.frame(Deviation = seq(from=-5,to=15,length=100), Density = dt(seq(from=-5,to=5,length=100), df = rating.df) )
+require(ggplot2)
+ggplot(threshold.plot, aes(x = Deviation, y = Density)) + geom_line(colour = "blue", size = 1.5) + geom_vline(xintercept = thresholds, colour = "red", size = 0.75) + geom_hline(yintercept = 0)
+```
+
+Here are the standard deviations for each transition from C to B to A:
+
+```{r mysize=TRUE, size='\\footnotesize'}
+rating.df <- 16 ## Thinking that there are 3 non-defaulting ratings being spliced together
+(thresholds <- qt(C.cumprobs, rating.df))
+```
+
+We compute thresholds using a fairly thick-tailed quantiles of Gossett' Student's t-distribution (only 2 degrees of freedom). These thresholds are what we have been seeking: they tell us when a customer's credit is suspect, needs to be further examined, or mitigated.
+
+Here is the plot, where we first define a data frame suited to the task.
+
+```{r mysize=TRUE, size='\\footnotesize', eval = FALSE}
+threshold.plot <- data.frame(Deviation = seq(from=-5,to=15,length=100), Density = dt(seq(from=-5,to=5,length=100), df = rating.df) )
+require(ggplot2)
+ggplot(threshold.plot, aes(x = Deviation, y = Density)) + geom_line(colour = "blue", size = 1.5) + geom_vline(xintercept = thresholds, colour = "red", size = 0.75) + geom_hline(yintercept = 0)
+```
+
+
+```{r mysize=TRUE, size='\\footnotesize', echo = FALSE}
+threshold.plot <- data.frame(Deviation = seq(from=-5,to=15,length=100), Density = dt(seq(from=-5,to=5,length=100), df = rating.df) )
+require(ggplot2)
+ggplot(threshold.plot, aes(x = Deviation, y = Density)) + geom_line(colour = "blue", size = 1.5) + geom_vline(xintercept = thresholds, colour = "red", size = 0.75) + geom_hline(yintercept = 0)
+```
+
+
+```{r mysize=TRUE, size='\\footnotesize', eval = FALSE}
+rating.df <- 16 ## Thinking that there are 3 non-defaulting ratings being spliced together
+(thresholds <- qt(C.cumprobs, rating.df))
+threshold.plot <- data.frame(Deviation = seq(from=-5,to=5,length=100), Density = dt(seq(from=-5,to=5,length=100), df = rating.df) )
+require(ggplot2)
+ggplot(threshold.plot, aes(x = Deviation, y = Density)) + geom_line(colour = "blue", size = 1.5) + geom_vline(xintercept = thresholds, colour = "red", size = 1.5) + geom_hline(yintercept = 0)
+```
+
+
+Again the t-distribution standard deviation thresholds:
+
+```{r mysize=TRUE, size='\\footnotesize', echo = FALSE}
+rating.df <- 16 ## Thinking that there are 3 non-defaulting ratings being spliced together
+(thresholds <- qt(C.cumprobs, rating.df))
+```
+
+
+```{r mysize=TRUE, size='\\footnotesize', echo = FALSE}
+rating.df <- 16 ## Thinking that there are 3 non-defaulting ratings being spliced together
+(thresholds <- qt(C.cumprobs, rating.df))
+threshold.plot <- data.frame(Deviation = seq(from=-5,to=5,length=100), Density = dt(seq(from=-5,to=5,length=100), df = rating.df) )
+require(ggplot2)
+ggplot(threshold.plot, aes(x = Deviation, y = Density)) + geom_line(colour = "blue", size = 1.5) + geom_vline(xintercept = thresholds, colour = "red", size = 1.5) + geom_hline(yintercept = 0)
+```
+
+The `dt` in the plot is the Student's t density function from -5 to +5 for 100 ticks. 
+
+Now that this works for one rating let's plot all of the ratings row by row using apply with the cusum function (on the first dimension). We will use the Student's t distribution to generate thresholds.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+## Being sure we transpose this next result
+cumprobs <- t(apply(P.reverse, 1, function(v) {pmin(0.999, pmax(0.001, cumsum(v)))}))  
+## v holds the values of of the elements of each row (remember this is "row-wise") we are accumulating a sum
+rating.df <- 16
+thresholds<-qt(cumprobs,rating.df) ##Use Student's t
+plot.parm <- par(mfrow=c(1,3)) ## Building a 1 row, 3 column panel
+for (j in 1:nrow(thresholds))
+{
+  plot(seq(from=-5, to=5, length=100), dnorm(seq(from=-5, to=5, length=100)), type="l", xlab="Deviation", ylab="Density", main=paste(rownames(thresholds)[j], "Rating"))
+  abline(v=thresholds[j,],col=1:length(thresholds[j,]))
+}
+par(plot.parm)
+```
+
+The A ratings have a much lower loss threshold as we would expect than C or B.
+
+## Now for the Future
+
+Decision makers now want to use this model to look into the future. Using the hazard rates to develop policies for our accounts receivable, and ultimately customer and counterparty (e.g., vendors) relationships. Let's build a rating event simulation to dig into how these rates might occur in the wild future.
+
+Let's use transaction data to estimate an eight rating hazard rate to simulate the data we might have seen in the first place.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+## Number of rating categories
+n.cat <- dim(lambda)[1]
+## Sum of migration rates from each non-default rating
+(rates.sum <- -diag(lambda)[-n.cat])
+## Names of non-default ratings
+names.nondf <- names(rates.sum)
+## probabilities of transition (off diagonal)
+(transition.probs <- lambda[-n.cat,]/rates.sum)
+## matrix rows sum to zero
+apply(transition.probs,1,sum)
+```
+
+A last row would have been the D rating absorbing row of 3 zeros and a 1.
+
+Let's create a miniverse of 20 years of rating migration data. This will help us understand the many possibilities for accounts receivable transitions, even through we do not have the direct data to do so. Within the 20 years we allow for up to 5 transitions per account. All of this is deposited into a data frame that will have as columns (fields in a database) an ID, a start time for the transition state, and end time for the state, followed by the starting transition and the ending transition. These fields will allow us to compute how long an account dwells in a transition state (that is, a rating).
+
+We generate a random portfolio of 100 accounts and calculate how long it takes for them to transition from one credit rating (transition start state) to another (transition end state). We also build into the simulation fractions of accounts in each of the non-defaulting notches. These fractions serve as the first step in estimating the probability of being in a rating notch.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+set.seed(1016)
+n.firms <- 100
+fractions <- c(0.1,0.1,0.1) ## equal number of transitions of each rating 
+initial.ratings <- sample(names.nondf, size=n.firms, replace=TRUE, prob=fractions)
+table(initial.ratings)
+```
+
+The `table` function tells us how many firms out of a 100 are in each non-default rating on average over the simulation.
+
+Now we set up parameters for 20 years of data across the 100 firms. This will help us understand the many possibilities for accounts receivable transitions, even through we might not have enough direct data to do so. Within the 20 years we allow for up to 5 transitions per account. All of this is deposited into a data frame that will have as columns (fields in a database) an ID, a start time for the transition state, and end time for the state, followed by the starting transition and the ending transition. These fields will allow us to compute how long an account dwells in a transition state (that is, a rating).
+
+We begin the simulation of events by creating an outer loop of firms, 100 in all in our simulated accounts receivable portfolio. We are allowing no more than 5 credit rating transitions as well. 
+
+```{r mysize=TRUE, size='\\footnotesize'}
+n.years <- 1829; max.row <- n.firms*5
+output.Transitions <- data.frame(id=numeric(max.row), start.time=numeric(max.row), end.time=numeric(max.row), start.rating=rep("",max.row), end.rating=rep("",max.row), stringsAsFactors=FALSE)
+```
+
+The `for` loop simulates start and end times for each rating for each firm (up to so many transitions across so many years). Within the loop we calculate how long the firm is in each rating, until it isn't. It is this time in transition (the "spell" or "dwell time") that is really the core of the simulation and our understanding of hazard rate methodology.  We will model this dwell time as an exponential function using `rexp()` to sample a time increment. Other functions we could use might be the Weibull or double-exponential for this purpose.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+count <- 0
+for (i in 1:n.firms)
+{
+	end.time <- 0; end.rating <- initial.ratings[i]
+	while ((end.time < n.years) & (end.rating!="D")){
+		count <- count + 1
+		start.time <- end.time; start.rating <- end.rating
+		end.time <- start.time + rexp(n=1, rate=rates.sum[start.rating])		
+		if (end.time <= n.years){
+			pvals <- transition.probs[start.rating,names.nondf!=start.rating]
+			end.rating <- sample(names(pvals),size=1,prob=pvals)
+		}
+		if (end.time > T){
+			end.time <- T
+			}
+		output.Transitions[count,] <- list(i,start.time,end.time,start.rating,end.rating)
+			}
+}
+```
+
+We configure all of the columns of our output data framw. We also compute the time in a rating state and add to the original `output.Transitions` data frame.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+##output.Transitions <- output.Transitions[1:count,]
+output.Transitions <- read.csv("creditmigration.csv")
+output.Transitions$start.rating <- as.factor(output.Transitions$start.rating)
+output.Transitions$end.rating <- as.factor(output.Transitions$end.rating)
+##output.Transitions$time <- output.Transitions$end.time-output.Transitions$start.time
+transition.Events <- output.Transitions
+```
+
+And then we look at the output.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+head(output.Transitions)
+```
+
+Let's inspect our handiwork further
+
+```{r mysize=TRUE, size='\\footnotesize'}
+head(transition.Events,n=5)
+summary(transition.Events)
+dim(transition.Events)
+```
+
+We may want to save this simulated data to our working directory.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+summary(transition.Events)
+dim(transition.Events)
+## write.csv(transition.Events,"data/transitionevents.csv")
+```
+
+## Build We Must
+
+Now let's go through the work flow to build a hazard rate estimation model from data. Even though this is simulated data, we can use this resampling approach to examine the components of the hazard rate structure across this rating system.
+
+Our first step is to tabulate the count of transitions from ratings to one another and to self with enough columns to fill the ending state ratings. Let's recall the notation of the hazard rate calculation:
+
+\[
+\lambda_{ij} = \frac{N_{ij}}{\int_{0}^{t} Y_{i}(s) ds}
+\]
+
+Now we begin to estimate:
+
+```{r mysize=TRUE, size='\\footnotesize'}
+(Nij.table <- table(transition.Events$start.rating, transition.Events$end.rating))
+(RiskSet <- by(transition.Events$time, transition.Events$start.rating, sum))
+I.levels <- levels(transition.Events$start.rating)
+J.levels <- levels(transition.Events$end.rating)
+(Ni.matrix <- matrix(nrow=length(I.levels), ncol=length(J.levels), as.numeric(RiskSet), byrow=FALSE))
+```
+
+
+The `Nij.table` tabulates the count of transitions from start to end. The `Ni.matrix` gives us the row sums of transition times ("spell" or "dwelling time") for each starting state.
+
+Now we can estimate a simple hazard rate matrix. This looks just like the formula now.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+(lambda.hat <- Nij.table/Ni.matrix)
+```
+
+hThe diagonal of a generator matrix is the negative of the sum of off-diagonal elements row by row.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+## Add default row and correct diagonal
+lambda.hat <- lambda.hat[-8,]
+lambda.hat.diag <- rep(0,dim(lambda.hat)[2])
+lambda.hat <- rbind(lambda.hat,lambda.hat.diag)
+diag(lambda.hat) <- lambda.hat.diag
+rowsums <- apply(lambda.hat,1,sum)
+diag(lambda.hat) <- -rowsums
+## check for valid generator
+apply(lambda.hat,1,sum)
+lambda.hat
+dim(lambda.hat)
+```
+
+That last statement calculates the row sums of the `lambda.hat` matrix. If the sums are zero, then we correctly placed the diagonals.
+
+Now we generate the transition matrix using the matrix exponent function.
+Verify how close the simulation is (or not) to the original transition probabilities using `P - P.hat`.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+## The matrix exponential
+## Annual transition probabilities
+(P.hat <- as.matrix(expm(lambda.hat)))
+```
+
+Most of our accounts will most probably stay in their initial ratings.
+
+### What does that mean?
+
+Now let's replot the non-defaulting state distributions with thresholds using the simulation of the transition probabilities.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+P.reverse <- P.hat[8:1,8:1] ## Use P.hat now
+P.reverse <- P.reverse[-1,] ##without D state transitions
+## select the C rating transition probabilities
+C.probs <- P.reverse[1,]
+C.cumprobs <- cumsum(C.probs)
+thresholds <- qnorm(C.cumprobs)
+
+plot(seq(from=-5,to=5,length=100), dt(seq(from=-5,to=5,length=100), df = 16), type="l", xlab="X", ylab="density")
+abline(v=thresholds, col=1:length(thresholds))
+```
+
+
+We look at all of the ratings row by row using apply with the cusum function.
+
+``` {r mysize=TRUE, size='\\footnotesize'}
+cum.probs <- t(apply(P.reverse, 1, function(v){pmin(0.99999, pmax(0.00001, cumsum(v)))}))
+thresholds<-qt(cum.probs,16) ##Use Student-t with 16 degrees of freedom
+opa <- par(mfrow=c(2,4))
+for (j in 1:nrow(thresholds))
+{
+  plot(seq(from=-8,to=8,length=100), dt(seq(from=-8,to=8,length=100), 16), type="l", xlab="Deviation", ylab="Density", main=paste("Rating ", rownames(thresholds)[j]))
+  abline(v=thresholds[j,],col=1:length(thresholds[j,]))
+}
+par(opa)
+```
+
+`cum.probs` is adjusted for 0 and 1 as these might produce `NaN`s and stop the action. Notice the use of `pmin` and `pmax` to perform element by element (*p*arallel minimum and maximum) operations. 
+
+This just goes to show it is hard to be rated C. It is the riskiest of all. 
+
+## Now for the Finale
+
+We will now use a technique that will can be used with any risk category. The question on the table is: how can we generate a loss distribution for credit risk with so much variation across ratings? 
+
+- A loss distribution is composed of two elements, frequency and severity. 
+- Frequency asks the question how often and related to that question, how likely. 
+- Severity asks how big a loss. 
+
+For operational risk frequency will be modeled by a Poisson distribution with an average arrival rate of any loss above a threshold.  Severity will be modeled using Beta, Gamma, Exponential, Weibull, Normal, Log-Normal, Student-t, or extreme value distributions. For credit risk we can model some further components: loss given default (i.e., recovery) and exposure at default for severity, and probability of default for frequency. By the way our transition probabilities are counting distirubtion and have as their basis the Poisson distirbution. We have used both dwelling times AND the computation of hazards with dependent structures to model the transition probabilities.
+
+Let's look at our top 20 customers by revenue and suppose we have these exposures. Probabilities of default are derived from the transition probabilities we just calculated.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+## Specify portfolio characteristics
+n.accounts <- 20
+exposure.accounts <- c(5,5,5,5,10,10,10,10,20,20,20,20,30,30,30,30,40,40,40,40)
+probability.accounts <- c(rep(0.1,10),rep(0.05,10))
+```
+
+## Enter Laplace
+
+A hugely useful tool for finance and risk is the Laplace transform. Let's formally define this as the integral (again think cumulative sum).
+
+\[
+L(f(t)) = \int_{0}^{\infty}e^{-st}f(t)dt = f(s)
+\]
+
+where $f(t)$ is a monotonic, piecewise differentiable function, say the cash flow from an asset, or a cumulative density function . To make this "real" for us we can calculate (or look up on a standard table of transforms)
+
+\[
+L\{1\} = \int_{0}^{\infty} e^{-st} 1 dt = \frac{1}{s}
+\]
+
+If $1$ is a cash flow today $t = 0$, then $L\{1\}$ can be interpreted as the present value of $\$1$ at $s$ rate of return in perpetuity. Laplace transforms are thus to a financial economist a present value calculation. They map the time series of cash flows, returns, exposures, into rates of return.
+
+In our context we are trying to meld receivables account exposures, the rate of recovery if a default occurs, and the probability of default we worked so hard to calculate using the Markov chain probabilities.
+
+For our purposes we need to calculate for $m$ exposures the Laplace transform of the sum of losses convolved with probabilities of default: 
+
+\[
+\sum_{0}^{m} (pd_{i} \,\times lgd_{i} \,\times S_{i}) 
+\]
+
+where $pd$ is the probability of default, $lgd$ is the loss given default, and $S$ is exposure in monetary units. In what follows `lgd` is typically one minus the recovery rate in the event of default. Here we assume perfect recovery, even our attorney's fees.
+
+This function effectively computes the cumulative loss given the probability of default, raw account exposures, and the loss given default.
+
+```{r mysize=TRUE, size='\\footnotesize'}
+laplace.transform <- function(t,pd,exposure,lgd=rep(1,length(exposure)))
+{
+  output <- rep(NA,length(t))
+  for (i in 1:length(t))
+    output[i] <- exp(sum(log(1-pd*(1- exp(-exposure*lgd*t[i])))))
+  output
+}
+```
+
+
+### It's technical...
+We can evaluate the Laplace Transform at $s = i$ (where $i = sqrt{-1}$, the imaginary number) to produce the loss distribution's characteristic function. The loss distribution's characteristic function encapsulates all of the information about loss: means, standard deviations, skewness, kurtosis, quantiles,..., all of it. When we use the characteristic function we can then calculate the Fast Fourier Transform of the loss distribution characteristic function to recover the loss distribution itself. 
+- This is a fast alternative to Monte Carlo simulation.
+- Note below that we must divide the FFT output by the number of exposures (plus 1 to get the factor of 2 necessary for efficient operation of the FFT).
+
+
+```{r mysize=TRUE, size='\\footnotesize'}
+N <- sum(exposure.accounts)+1 ## Exposure sum as a multiple of two
+t <- 2*pi*(0:(N-1))/N ## Setting up a grid of t's
+loss.transform <- laplace.transform(-t*(1i),probability.accounts, exposure.accounts) ## 1i is the imaginary number
+loss.fft <- round(Re(fft(loss.transform)),digits=20) ## Back to Real numbers
+sum(loss.fft)
+loss.probs <- loss.fft/N
+loss.probs.1 <- loss.probs[(0:20)*5+1]
+loss.q <- quantile(loss.probs.1,0.99)
+loss.es <- loss.probs.1[loss.probs.1 > loss.q]
+barplot(loss.probs.1,names.arg=paste((0:20)*5))
+(VaR <- loss.q*N)
+(ES <- loss.es*N)
+```
+
+We can use this same technique when we try to aggregate across all exposures in the organization. The last two statements using the `quantile` function calculate the amount of capital we need to cover at least a 1% loss on this portfolio of accounts receivable. The barplot provides a rough and ready histogram of the loss distribution.
+
+## Summary
+
+We covered a lot of credit risk maths: A. Markov, transition probabilities, hazard rates, M. Laplace. We just built a rating model that produced data driven risk thresholds. We used these probabilities to generate an aggregate credit loss distribution.
+
+## Further Reading
+
+## References
+
+

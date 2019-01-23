@@ -1,13 +1,6 @@
 ---
 title: "Project 1 -- HO2 Analysis"
 subtitle: "Live Sessions: weeks 1 and 2"
-header-includes:
-- \usepackage{fancyhdr}
-- \pagestyle{fancy}
-- \fancyhead[CO,CE]{\thetitle}
-- \fancyfoot[CO,CE]{Copyright 2018 William G. Foote, all rights reserved.}
-- \fancyhead[RE,RO]{\thepage}
-- \renewcommand{\footrulewidth}{0.5pt}
 output: word_document
 toc: TRUE
 toc_float: TRUE

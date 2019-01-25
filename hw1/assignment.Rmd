@@ -18,10 +18,10 @@ Supply chain managers at our company continue to note we have a significant expo
 # Read in data
 # package EIAdata
 #
-HO2 <- read.csv("../data/nyhh02.csv", header = T, stringsAsFactors = F)
+HO2 = read.csv("../data/nyhh02.csv", header = T, stringsAsFactors = F)
 # stringsAsFactors sets dates as character type
 head(HO2)
-HO2 <- na.omit(HO2) ## to clean up any missing data
+HO2 = na.omit(HO2) ## to clean up any missing data
 # use na.approx() as well
 str(HO2) # review the structure of the data so far
 ```
@@ -45,7 +45,7 @@ HO2.df1 = na.omit(data.frame(
     direction = direction1
 ))
 
-return = as.numeric(diff(log(HO2$DHOILNYH))) # Euler 
+return = as.numeric(diff(log(HO2$DHOILNYH)))
 size = as.numeric(abs(return))
 direction = ifelse(return > 0, "up", ifelse(return < 0, "down", "same"))
 date = as.Date(HO2$DATE[-1], "%m/%d/%Y")
@@ -80,38 +80,34 @@ Let's try a bar graph of the absolute value of price rates. We use `geom_bar` to
 
 ```{r echo = TRUE, eval = TRUE}
 # library(ggplot2)
-p <- ggplot(HO2.df, aes(x = date, y = size, group = 1)) + geom_bar(stat = "identity", colour = "green")
+p = ggplot(HO2.df, aes(x = date, y = size, group = 1)) + geom_bar(stat = "identity", colour = "green")
 p
 ```
 
 Now let's build an overlay of `return` on `size`.
 
 ```{r echo = TRUE, eval = TRUE}
-p <- ggplot(HO2.df, aes(date, size)) + geom_bar(stat = "identity", colour = "darkorange") + geom_line(data = HO2.df, aes(date, return), colour = "blue")
+p = ggplot(HO2.df, aes(date, size)) + geom_bar(stat = "identity", colour = "darkorange") + geom_line(data = HO2.df, aes(date, return), colour = "blue")
 p
 ```
 
 2. Let's dig deeper and compute mean, standard deviation, etc. Load the `data_moments()` function. Run the function using the `HO2.df$return` subset of the data and write a `knitr::kable()` report.
 
 ```{r echo = TRUE, eval = TRUE}
-# Load the data_moments() function
-## data_moments function
-## INPUTS: vector
-## OUTPUTS: list of scalars (mean, sd, median, skewness, kurtosis)
-data_moments <- function(data){
+data_moments = function(data) {
 library(moments)
-mean.r <- mean(data)
-sd.r <- sd(data)
-median.r <- median(data)
-skewness.r <- skewness(data)
-kurtosis.r <- kurtosis(data)
-result <- data.frame(mean = mean.r, std_dev = sd.r, median = median.r, skewness = skewness.r, kurtosis = kurtosis.r)
+mean.r = mean(data)
+sd.r = sd(data)
+median.r = median(data)
+skewness.r = skewness(data)
+kurtosis.r = kurtosis(data)
+result = data.frame(mean = mean.r, std_dev = sd.r, median = median.r, skewness = skewness.r, kurtosis = kurtosis.r)
 return(result)
 }
 # Run data_moments()
-answer <- data_moments(HO2.df$return)
+answer = data_moments(HO2.df$return)
 # Build pretty table
-answer <- round(answer, 4)
+answer = round(answer, 4)
 knitr::kable(answer)
 ```
 
@@ -126,19 +122,19 @@ table(HO2.df$return == 0)
 # Pivoting
 library(dplyr)
 ## 1: filter to those houses with fairly high prices
-# pivot.table <-filter(HO2.df, size > 0.5*max(size))
+# pivot.table =filter(HO2.df, size > 0.5*max(size))
 ## 2: set up data frame for by-group processing
-pivot.table <-group_by(HO2.df, direction)
+pivot.table =group_by(HO2.df, direction)
 ## 3: calculate the summary metrics
 options(dplyr.width = Inf) ## to display all columns
-HO2.count <- length(HO2.df$return)
-pivot.table <-summarise(pivot.table, return.avg = round(mean(return), 4), return.sd = round(sd(return), 4), quantile.5 = round(quantile(return, 0.05), 4), quantile.95 = round(quantile(return, 0.95), 4), percent = round((length(return)/HO2.count)*100, 2))
+HO2.count = length(HO2.df$return)
+pivot.table =summarise(pivot.table, return.avg = round(mean(return), 4), return.sd = round(sd(return), 4), quantile.5 = round(quantile(return, 0.05), 4), quantile.95 = round(quantile(return, 0.95), 4), percent = round((length(return)/HO2.count)*100, 2))
 # Build visual
 knitr::kable(pivot.table, digits = 2)
 # Here is how we can produce a LaTeX formatted and rendered table
 # 
 library(xtable)
-HO2.caption <- "Heating Oil No. 2: 1986-2016"
+HO2.caption = "Heating Oil No. 2: 1986-2016"
 print(xtable(t(pivot.table), digits = 2, caption = HO2.caption, align=rep("r", 4), table.placement="V"))
 print(xtable(answer), digits = 2)
 ```
@@ -156,9 +152,9 @@ We want to further characterize the distribution of up and down movements visual
 1. How can we show the differences in the shape of ups and downs in HO2, especially given our tolerance for risk? We can use the `HO2.df` data frame with `ggplot2` and the cumulative relative frequency function `stat_ecdf` to begin to understand this data.
 
 ```{r echo = TRUE, eval = TRUE}
-HO2.tol.pct <- 0.95
-HO2.tol <- quantile(HO2.df$return, HO2.tol.pct)
-HO2.tol.label <- paste("Tolerable Rate = ", round(HO2.tol, 2), sep = "")
+HO2.tol.pct = 0.95
+HO2.tol = quantile(HO2.df$return, HO2.tol.pct)
+HO2.tol.label = paste("Tolerable Rate = ", round(HO2.tol, 2), sep = "")
 ggplot(HO2.df, aes(return, fill = direction)) + stat_ecdf(colour = "blue", size = 0.75) + geom_vline(xintercept = HO2.tol, colour = "red", size = 1.5) + annotate("text", x = HO2.tol+5 , y = 0.75, label = HO2.tol.label, colour = "darkred")
 ```
 
@@ -169,33 +165,33 @@ ggplot(HO2.df, aes(return, fill = direction)) + stat_ecdf(colour = "blue", size 
 ## input: HO2 csv file from /data directory
 ## output: result for input to kable in $table and xtable in $xtable; 
 ## data frame for plotting and further analysis in $df.
-## Example: HO2.data <- HO2_movement(file = "../data/nyhh02.csv", caption = "HO2 NYH")
-HO2_movement <- function(file = "../data/nyhh02.csv", caption = "Heating Oil No. 2: 1986-2016"){
+## Example: HO2.data = HO2_movement(file = "../data/nyhh02.csv", caption = "HO2 NYH")
+HO2_movement = function(file = "../data/nyhh02.csv", caption = "Heating Oil No. 2: 1986-2016") {
 # Read file and deposit into variable
-HO2 <- read.csv(file, header = T, stringsAsFactors = F)
+HO2 = read.csv(file, header = T, stringsAsFactors = F)
 # stringsAsFactors sets dates as character type
-HO2 <- na.omit(HO2) ## to clean up any missing data
+HO2 = na.omit(HO2) ## to clean up any missing data
 # Construct expanded data frame
-return <- as.numeric(diff(log(HO2$DHOILNYH))) * 100
-size <- as.numeric(abs(return)) # size is indicator of volatility
-direction <- ifelse(return > 0, "up", ifelse(return < 0, "down", "same")) # another indicator of volatility
-date <- as.Date(HO2$DATE[-1], "%m/%d/%Y") # length of DATE is length of return +1: omit 1st observation
-price <- as.numeric(HO2$DHOILNYH[-1]) # length of DHOILNYH is length of return +1: omit first observation
-HO2.df <- na.omit(data.frame(date = date, price = price, return = return, size = size, direction = direction)) # clean up data frame by omitting NAs
+return = as.numeric(diff(log(HO2$DHOILNYH))) * 100
+size = as.numeric(abs(return)) # size is indicator of volatility
+direction = ifelse(return > 0, "up", ifelse(return < 0, "down", "same")) # another indicator of volatility
+date = as.Date(HO2$DATE[-1], "%m/%d/%Y") # length of DATE is length of return +1: omit 1st observation
+price = as.numeric(HO2$DHOILNYH[-1]) # length of DHOILNYH is length of return +1: omit first observation
+HO2.df = na.omit(data.frame(date = date, price = price, return = return, size = size, direction = direction)) # clean up data frame by omitting NAs
 require(dplyr)
 ## 1: filter if necessary
-# pivot.table <-filter(HO2.df, size > 0.5*max(size))
+# pivot.table =filter(HO2.df, size > 0.5*max(size))
 ## 2: set up data frame for by-group processing
-pivot.table <-group_by(HO2.df, direction)
+pivot.table =group_by(HO2.df, direction)
 ## 3: calculate the summary metrics
 options(dplyr.width = Inf) ## to display all columns
-HO2.count <- length(HO2.df$return)
-pivot.table <-summarise(pivot.table, return.avg = mean(return), return.sd = sd(return), quantile.5 = quantile(return, 0.05), quantile.95 = quantile(return, 0.95), percent = (length(return)/HO2.count)*100)
+HO2.count = length(HO2.df$return)
+pivot.table =summarise(pivot.table, return.avg = mean(return), return.sd = sd(return), quantile.5 = quantile(return, 0.05), quantile.95 = quantile(return, 0.95), percent = (length(return)/HO2.count)*100)
 # Construct transpose of pivot table with xtable()
 require(xtable)
-pivot.xtable <- xtable(t(pivot.table), digits = 2, caption = caption, align=rep("r", 4), table.placement="V")
-HO2.caption <- "Heating Oil No. 2: 1986-2016"
-output.list <- list(table = pivot.table, xtable = pivot.xtable, df = HO2.df)
+pivot.xtable = xtable(t(pivot.table), digits = 2, caption = caption, align=rep("r", 4), table.placement="V")
+HO2.caption = "Heating Oil No. 2: 1986-2016"
+output.list = list(table = pivot.table, xtable = pivot.xtable, df = HO2.df)
 return(output.list)
 }
 ```
@@ -211,14 +207,14 @@ Morale: more work today (build the function) means less work tomorrow (write yet
 
 ```{r echo = TRUE, eval = TRUE}
 library(MASS)
-HO2.data <- HO2_movement(file = "../data/nyhh02.csv", caption = "HO2 NYH")$df
+HO2.data = HO2_movement(file = "../data/nyhh02.csv", caption = "HO2 NYH")$df
 str(HO2.data)
-fit.gamma.up <- fitdistr(HO2.data[HO2.data$direction == "up", "return"], "gamma", hessian = TRUE)
+fit.gamma.up = fitdistr(HO2.data[HO2.data$direction == "up", "return"], "gamma", hessian = TRUE)
 fit.gamma.up
-# fit.t.same <- fitdistr(HO2.data[HO2.data$direction == "same", "return"], "gamma", hessian = TRUE) # a problem here is all observations = 0
-fit.t.down <- fitdistr(HO2.data[HO2.data$direction == "down", "return"], "t", hessian = TRUE)
+# fit.t.same = fitdistr(HO2.data[HO2.data$direction == "same", "return"], "gamma", hessian = TRUE) # a problem here is all observations = 0
+fit.t.down = fitdistr(HO2.data[HO2.data$direction == "down", "return"], "t", hessian = TRUE)
 fit.t.down
-fit.gamma.down <- fitdistr(-HO2.data[HO2.data$direction == "down", "return"], "gamma", hessian = TRUE) # gamma distribution defined for data >= 0
+fit.gamma.down = fitdistr(-HO2.data[HO2.data$direction == "down", "return"], "gamma", hessian = TRUE) # gamma distribution defined for data >= 0
 fit.gamma.down
 ```
 

@@ -32,23 +32,49 @@ str(HO2) # review the structure of the data so far
 
 ```{r eval = TRUE}
 # Construct expanded data frame
-return <- as.numeric(diff(log(HO2$DHOILNYH))) * 100 # Euler 
-size <- as.numeric(abs(return)) # size is indicator of volatility
-direction <- ifelse(return > 0, "up", ifelse(return < 0, "down", "same")) # another indicator of volatility
-# =if(return > 0, "up", if(return < 0, "down", "same"))
-date <- as.Date(HO2$DATE[-1], "%m/%d/%Y") # length of DATE is length of return +1: omit 1st observation
-price <- as.numeric(HO2$DHOILNYH[-1]) # length of DHOILNYH is length of return +1: omit first observation
-HO2.df <- na.omit(data.frame(date = date, price = price, return = return, size = size, direction = direction)) # clean up data frame by omitting NAs
-str(HO2.df)
+return1 = as.numeric(diff(log(HO2$DHOILNYH))) * 100 # Euler 
+size1 = as.numeric(abs(return1)) # size is indicator of volatility
+direction1 = ifelse(return1 > 0, "up", ifelse(return1 < 0, "down", "same")) # another indicator of volatility
+date1 = as.Date(HO2$DATE[-1], "%m/%d/%Y") # length of DATE is length of return +1: omit 1st observation
+price1 = as.numeric(HO2$DHOILNYH[-1]) # length of DHOILNYH is length of return +1: omit first observation
+HO2.df1 = na.omit(data.frame(
+    date = date1,
+    price = price1,
+    return = return1,
+    size = size1,
+    direction = direction1
+))
+
+return = as.numeric(diff(log(HO2$DHOILNYH))) # Euler 
+size = as.numeric(abs(return))
+direction = ifelse(return > 0, "up", ifelse(return < 0, "down", "same"))
+date = as.Date(HO2$DATE[-1], "%m/%d/%Y")
+price = as.numeric(HO2$DHOILNYH[-1])
+HO.df = na.omit(data.frame(
+    date = date,
+    price = price,
+    return = return,
+    size = size,
+    direction = direction
+))
 ``` 
 
 We can plot with the `ggplot2` package. In the `ggplot` statements we use `aes`, "aesthetics", to pick `x` (horizontal) and `y` (vertical) axes. Use `group =1` to ensure that all data is plotted. The added (`+`) `geom_line` is the geometrical method that builds the line plot.
 
 ```{r echo = TRUE, eval = TRUE}
 library(ggplot2)
-p <- ggplot(HO2.df, aes(x = date, y = return, group = 1)) + geom_line(colour = "blue")
-p
-``` 
+library(gridExtra)
+
+p1 = ggplot(HO2.df, aes(x = date, y = return, group = 1)) +
+    geom_line(colour = "blue") +
+    ggtitle('Standard Plot: 1st element removed')
+
+p2 = ggplot(HO2.df1, aes(x = date1, y = return1, group = 1)) +
+    geom_line(colour = "blue") +
+    ggtitle('Normalized Data')
+
+grid.arrange(p1, p2, nrow=2)
+```
 
 Let's try a bar graph of the absolute value of price rates. We use `geom_bar` to build this picture.
 
@@ -216,4 +242,3 @@ Explain some of the data exploration, statistics and graphs here.
 (REPLACE text here)
 What can we say about the models we used for the data fit?
 What can we do about the exposure that hits the variable cost of producing several products?
-

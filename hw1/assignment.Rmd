@@ -79,11 +79,11 @@ Let's try a bar graph of the absolute value of price rates. We use `geom_bar` to
 
 ```{r echo = TRUE, eval = TRUE}
 library(ggplot2)
-p3 = ggplot(HO2.df, aes(x = date, y = size, group = 1)) +
+p3 = ggplot(HO2.df1, aes(x = date, y = size, group = 1)) +
     geom_bar(stat = "identity", colour = "green") +
     ggtitle('Absolute Value: Price Rates')
 
-p4 = ggplot(HO2.df, aes(date, size)) +
+p4 = ggplot(HO2.df1, aes(date, size)) +
     geom_bar(stat = "identity", colour = "darkorange") +
     geom_line(data = HO2.df, aes(date, return), colour = "blue") +
     ggtitle('Return on Size Overlay')
@@ -91,21 +91,30 @@ p4 = ggplot(HO2.df, aes(date, size)) +
 grid.arrange(p3, p4, nrow=2)
 ```
 
-2. Let's dig deeper and compute mean, standard deviation, etc. Load the `data_moments()` function. Run the function using the `HO2.df$return` subset of the data and write a `knitr::kable()` report.
+2. Let's dig deeper and compute mean, standard deviation, etc. Load the `data_moments()` function. Run the function using the `HO2.df1$return` subset of the data and write a `knitr::kable()` report.
 
 ```{r echo = TRUE, eval = TRUE}
 data_moments = function(data) {
-library(moments)
-mean.r = mean(data)
-sd.r = sd(data)
-median.r = median(data)
-skewness.r = skewness(data)
-kurtosis.r = kurtosis(data)
-result = data.frame(mean = mean.r, std_dev = sd.r, median = median.r, skewness = skewness.r, kurtosis = kurtosis.r)
-return(result)
+    library(moments)
+    mean.r = mean(data)
+    sd.r = sd(data)
+    median.r = median(data)
+    skewness.r = skewness(data)
+    kurtosis.r = kurtosis(data)
+    result = data.frame(
+        mean = mean.r,
+        std_dev = sd.r,
+        median = median.r,
+        skewness = skewness.r,
+        kurtosis = kurtosis.r
+    )
+
+    return(result)
 }
+
 # Run data_moments()
-answer = data_moments(HO2.df$return)
+answer = data_moments(HO2.df1$return)
+
 # Build pretty table
 answer = round(answer, 4)
 knitr::kable(answer)
@@ -115,19 +124,20 @@ knitr::kable(answer)
 
 ```{r echo = TRUE, eval = TRUE}
 # Counting
-table(HO2.df$return < 0) # one way
-table(HO2.df$return > 0)
-table(HO2.df$direction) # this counts 0 returns as negative
-table(HO2.df$return == 0)
+table(HO2.df1$return < 0) # one way
+table(HO2.df1$return > 0)
+table(HO2.df1$direction) # this counts 0 returns as negative
+table(HO2.df1$return == 0)
+
 # Pivoting
 library(dplyr)
 ## 1: filter to those houses with fairly high prices
 # pivot.table =filter(HO2.df, size > 0.5*max(size))
 ## 2: set up data frame for by-group processing
-pivot.table =group_by(HO2.df, direction)
+pivot.table =group_by(HO2.df1, direction)
 ## 3: calculate the summary metrics
 options(dplyr.width = Inf) ## to display all columns
-HO2.count = length(HO2.df$return)
+HO2.count = length(HO2.df1$return)
 pivot.table =summarise(pivot.table, return.avg = round(mean(return), 4), return.sd = round(sd(return), 4), quantile.5 = round(quantile(return, 0.05), 4), quantile.95 = round(quantile(return, 0.95), 4), percent = round((length(return)/HO2.count)*100, 2))
 # Build visual
 knitr::kable(pivot.table, digits = 2)
@@ -238,7 +248,17 @@ fit.gamma.down
 ## Conclusion
 
 ### Skills and Tools
+The main tools implemented for this report include RStudio, with associated built-in functions, as well as the following additional packages:
 
+* `ggplot2`
+* `gridExtra`
+* `dplyr`
+* `xtable`
+* `MASS`
+* `tseries`
+* `stats`
+
+Since timeseries data on "New York Harbor No. 2" (HO2) oil prices was used, the ability to interpret stationarity, as well as autocorrelation and partial autocorrelation was required. Standard plotting techniques using `ggplot2`, followed by the "dickey-fuller" test, via the `tseries` package, help determine whether data transformations were required. In this assignment, the `log` transformation followed by a difference of 1-step was implemented on the data. Having the data properly transformed, allowed the use of pivot tables from the `dplyr` package. Particular aspects were highlighted, and related to real world events. Additionally, a number of steps were taken to generate a gamma distribution. As later explained in the "Business Remarks" (below), the ability to translate properties of the gamma distribution, including `shape`, and `size` allowed an explanation regarding key properites for the given data distribution.
 
 ### Data Insights
 A csv dataset containing prices for the "New York Harbor No. 2" (HO2) oil prices was analyzed for volatility, and associated earnings. The corresponding data was a two column dataset containing the `DATE`, as well as the `DHOILNYH` oil price. Simple computations were performed, in order to obtain the required dataframe structure:
@@ -309,6 +329,28 @@ pacf(HO2.df1$price)
 ```
 
 Overall, the transformed data indicate appropriate properties for time-series analysis.
+
+Some initial analysis on the `size`, and `return` indicate volatility in both measures. Specifically, early 1990's and 2000's exhibit significant volatility for `$DHOILNYH` oil price's, with some noticeable volatility around 1996. Corresponding `skewness=-1.4353`, and `kurtosis=38.2595` indicate a non-normal distribution. Based on earlier generated visualization, both the `size`, and `return` have the same pattern, with a general difference of scale. The `return` has much smaller values ranging from 0 to 5, while `size` has a range of roughly 15, with volatility values spiking between 40-50.
+
+Another price measure, include the price direction between timesteps (n, n+1). In the case for `$DHOILNYH`, oil price decreasing, or going "down", occurred 3657 times. Similarly, oil price increasing, or going "up", occurred 3760 times, while no change (i.e. "same") occured 279 times.
+
+To better summarize the above for all possible cases:
+
+```{r}
+table(HO2.df1$return < 0)
+table(HO2.df1$return > 0)
+table(HO2.df1$direction)
+table(HO2.df1$return == 0)
+```
+
+The above summary seem equally dispersed, when only accounting for directional changes. Specifically, the difference between `TRUE`, or `FALSE` for each given case is not significantly different. However, this uniformity may be a result of the implemented transformation. Earlier generated pivot table help visualize the overall distribution in a more concise fashion:
+
+```
+direction	return.avg	return.sd	quantile.5	quantile.95	percent
+down	-1.77	1.99	-4.78	-0.19	47.52
+same	0.00	0.00	0.00	0.00	3.63
+up	1.76	1.75	0.18	4.82	48.86
+```
 
 ### Business Remarks
 :

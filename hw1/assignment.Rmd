@@ -37,6 +37,7 @@ size1 = as.numeric(abs(return1)) # size is indicator of volatility
 direction1 = ifelse(return1 > 0, "up", ifelse(return1 < 0, "down", "same")) # another indicator of volatility
 date1 = as.Date(HO2$DATE[-1], "%m/%d/%Y") # length of DATE is length of return +1: omit 1st observation
 price1 = as.numeric(HO2$DHOILNYH[-1]) # length of DHOILNYH is length of return +1: omit first observation
+price1 = as.numeric(diff(log(HO2$DHOILNYH)))
 HO2.df1 = na.omit(data.frame(
     date = date1,
     price = price1,
@@ -45,11 +46,11 @@ HO2.df1 = na.omit(data.frame(
     direction = direction1
 ))
 
-return = as.numeric(diff(log(HO2$DHOILNYH)))
-size = as.numeric(abs(return))
+return = HO2$DHOILNYH
+size = abs(return)
 direction = ifelse(return > 0, "up", ifelse(return < 0, "down", "same"))
-date = as.Date(HO2$DATE[-1], "%m/%d/%Y")
-price = as.numeric(HO2$DHOILNYH[-1])
+date = as.Date(HO2$DATE, "%m/%d/%Y")
+price = as.numeric(HO2$DHOILNYH)
 HO2.df = na.omit(data.frame(
     date = date,
     price = price,
@@ -64,7 +65,6 @@ We can plot with the `ggplot2` package. In the `ggplot` statements we use `aes`,
 ```{r echo = TRUE, eval = TRUE}
 library(ggplot2)
 library(gridExtra)
-
 p1 = ggplot(HO2.df, aes(x = date, y = return, group = 1)) +
     geom_line(colour = "blue") +
     ggtitle('Standard Plot: 1st element removed')
@@ -72,23 +72,23 @@ p1 = ggplot(HO2.df, aes(x = date, y = return, group = 1)) +
 p2 = ggplot(HO2.df1, aes(x = date1, y = return1, group = 1)) +
     geom_line(colour = "blue") +
     ggtitle('Normalized Data')
-
 grid.arrange(p1, p2, nrow=2)
 ```
 
 Let's try a bar graph of the absolute value of price rates. We use `geom_bar` to build this picture.
 
 ```{r echo = TRUE, eval = TRUE}
-# library(ggplot2)
-p = ggplot(HO2.df, aes(x = date, y = size, group = 1)) + geom_bar(stat = "identity", colour = "green")
-p
-```
+library(ggplot2)
+p3 = ggplot(HO2.df, aes(x = date, y = size, group = 1)) +
+    geom_bar(stat = "identity", colour = "green") +
+    ggtitle('Absolute Value: Price Rates')
 
-Now let's build an overlay of `return` on `size`.
+p4 = ggplot(HO2.df, aes(date, size)) +
+    geom_bar(stat = "identity", colour = "darkorange") +
+    geom_line(data = HO2.df, aes(date, return), colour = "blue") +
+    ggtitle('Return on Size Overlay')
 
-```{r echo = TRUE, eval = TRUE}
-p = ggplot(HO2.df, aes(date, size)) + geom_bar(stat = "identity", colour = "darkorange") + geom_line(data = HO2.df, aes(date, return), colour = "blue")
-p
+grid.arrange(p3, p4, nrow=2)
 ```
 
 2. Let's dig deeper and compute mean, standard deviation, etc. Load the `data_moments()` function. Run the function using the `HO2.df$return` subset of the data and write a `knitr::kable()` report.
@@ -209,12 +209,28 @@ Morale: more work today (build the function) means less work tomorrow (write yet
 library(MASS)
 HO2.data = HO2_movement(file = "../data/nyhh02.csv", caption = "HO2 NYH")$df
 str(HO2.data)
-fit.gamma.up = fitdistr(HO2.data[HO2.data$direction == "up", "return"], "gamma", hessian = TRUE)
-fit.gamma.up
+fit.gamma.up = fitdistr(
+    HO2.data[HO2.data$direction == "up", "return"],
+    "gamma",
+    hessian = TRUE
+)
+
 # fit.t.same = fitdistr(HO2.data[HO2.data$direction == "same", "return"], "gamma", hessian = TRUE) # a problem here is all observations = 0
+
+# define gamma density
+x = rgamma(100, shape = fit.gamma.up$sd[1], scale = 1/fit.gamma.up$estimate[2])
+den = density(x)
+dat = data.frame(x = den$x, y = den$y)
+
+# plot density as points
+ggplot(data = dat, aes(x = x, y = y)) +
+  geom_point(size = 3) +
+  theme_classic()
+
+# gamma distribution properties
 fit.t.down = fitdistr(HO2.data[HO2.data$direction == "down", "return"], "t", hessian = TRUE)
 fit.t.down
-fit.gamma.down = fitdistr(-HO2.data[HO2.data$direction == "down", "return"], "gamma", hessian = TRUE) # gamma distribution defined for data >= 0
+fit.gamma.down = fitdistr(-HO2.data[HO2.data$direction == "down", "return"], "gamma", hessian = TRUE)
 fit.gamma.down
 ```
 
@@ -222,16 +238,77 @@ fit.gamma.down
 ## Conclusion
 
 ### Skills and Tools
-:
-(REPLACE text here)
-What skills contributed towards data exploration and anaytics?
-:
+
 
 ### Data Insights
-:
-(REPLACE text here)
-Explain some of the data exploration, statistics and graphs here.
-:
+A csv dataset containing prices for the "New York Harbor No. 2" (HO2) oil prices was analyzed for volatility, and associated earnings. The corresponding data was a two column dataset containing the `DATE`, as well as the `DHOILNYH` oil price. Simple computations were performed, in order to obtain the required dataframe structure:
+
+```{r}
+return = HO2$DHOILNYH
+size = abs(return)
+direction = ifelse(return > 0, "up", ifelse(return < 0, "down", "same"))
+date = as.Date(HO2$DATE, "%m/%d/%Y")
+price = as.numeric(HO2$DHOILNYH)
+
+HO2.df = na.omit(data.frame(
+    date = date,
+    price = price,
+    return = return,
+    size = size,
+    direction = direction
+))
+```
+
+The first two columns of the `HO2.df` dataframe are self-evident, while the `return` is the original oil price, corresponding to the `DHOILNYH` column. The `size` was the absolute value of the oil price, which indicates the volatility of the price. A plot was easily generated:
+
+```{r echo = TRUE, eval = TRUE}
+library(ggplot2)
+library(gridExtra)
+ggplot(HO2.df, aes(x = date, y = return, group = 1)) +
+    geom_line(colour = "blue") +
+    ggtitle('Standard Plot: 1st element removed')
+```
+
+It is evident that the corresponding data doesn't exhibit any noticeable patterns. Specifically, the mean, variance, and autocorrelation is not constant over time. However, to prove non-stationarity, the dickey-fuller test was applied to the `HO2.df$price`:
+
+```{r}
+library(tseries)
+adf.test(HO2.df$price)
+```
+
+Since the `p-value = 0.5126`, we fail to reject the null hypothesis, and conclude the given data is not stationary. To better prepare the data for analysis, some tranformation was required. Specifically, the `log` function was applied to the oil price, then the `diff` was aplied with the default `lag=1` and `difference=1`.
+
+
+```{r}
+return1 = as.numeric(diff(log(HO2$DHOILNYH)), 2)
+size1 = as.numeric(abs(return1)) # size is indicator of volatility
+direction1 = ifelse(return1 > 0, "up", ifelse(return1 < 0, "down", "same"))
+date1 = as.Date(HO2$DATE[-1], "%m/%d/%Y")
+price1 = as.numeric(diff(log(HO2$DHOILNYH)))
+HO2.df1 = na.omit(data.frame(
+    date = date1,
+    price = price1,
+    return = return1,
+    size = size1,
+    direction = direction1
+))
+```
+
+The same dickey-fuller test was executed on the adjusted dataset:
+
+```{r}
+adf.test(HO2.df1$price)
+```
+
+Results indicate a `p-value=0.01`, which indicates the null hypothesis can be rejected. Specifically, the tranformed data is assumed to be stationary. Furthermore, autocorrelation seems very minor at `lag=4`, then a complete decay. Additionally, small partial-autocorrelation seem to exist with decaying characteristics.
+
+```{r}
+require(stats)
+acf(HO2.df1$price)
+pacf(HO2.df1$price)
+```
+
+Overall, the transformed data indicate appropriate properties for time-series analysis.
 
 ### Business Remarks
 :

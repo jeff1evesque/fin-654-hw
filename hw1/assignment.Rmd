@@ -159,13 +159,16 @@ We want to further characterize the distribution of up and down movements visual
 
 ### Questions
 
-1. How can we show the differences in the shape of ups and downs in HO2, especially given our tolerance for risk? We can use the `HO2.df` data frame with `ggplot2` and the cumulative relative frequency function `stat_ecdf` to begin to understand this data.
+1. How can we show the differences in the shape of ups and downs in HO2, especially given our tolerance for risk? We can use the `HO2.df1` data frame with `ggplot2` and the cumulative relative frequency function `stat_ecdf` to begin to understand this data.
 
 ```{r echo = TRUE, eval = TRUE}
 HO2.tol.pct = 0.95
-HO2.tol = quantile(HO2.df$return, HO2.tol.pct)
+HO2.tol = quantile(HO2.df1$return, HO2.tol.pct)
 HO2.tol.label = paste("Tolerable Rate = ", round(HO2.tol, 2), sep = "")
-ggplot(HO2.df, aes(return, fill = direction)) + stat_ecdf(colour = "blue", size = 0.75) + geom_vline(xintercept = HO2.tol, colour = "red", size = 1.5) + annotate("text", x = HO2.tol+5 , y = 0.75, label = HO2.tol.label, colour = "darkred")
+ggplot(HO2.df, aes(return, fill = direction)) +
+    stat_ecdf(colour = "blue", size = 0.75) +
+    geom_vline(xintercept = HO2.tol, colour = "red", size = 1.5) +
+    annotate("text", x = HO2.tol+5 , y = 0.75, label = HO2.tol.label, colour = "darkred")
 ```
 
 2. How can we regularly, and reliably, analyze HO2 price movements? For this requirement, let's write a function similar to `data_moments`. Name this new function `HO2_movement()`.
@@ -381,6 +384,31 @@ down	-1.77	1.99	-4.78	-0.19	47.52
 same	0.00	0.00	0.00	0.00	3.63
 up	1.76	1.75	0.18	4.82	48.86
 ```
+
+Additionally, creating a cumulative distribution function for HO2 oil price, with a tolerance `0.95`, indicates that 95% of samples has a value adjusted `return` of `0.03595899` or less. The associated pivot table on the oil price:
+
+```
+direction	return.avg	return.sd	quantile.5	quantile.95	percent
+down	-1.77	1.99	-4.78	-0.19	47.52
+same	0.00	0.00	0.00	0.00	3.63
+up	1.76	1.75	0.18	4.82	48.86
+```
+
+Subsetting the HO2 dataset using only `HO2.data$direction == "up"` along with the `return` price, the `fitdistr` incidates a `shape=1.30753665`, with `rate=0.74299635`. These two parameters are related to the "erlang distribution". Similarly, subsetting the HO2 dataset using only `(-HO2.data[HO2.data$direction == "down"` along with the `return` price, the corresponding erlang distribution patterns were `shape=1.31056202`, with `rate=0.73969342`. Generating a plot for the latter two distributions can easily be accomplished (as performed above):
+
+```{r}
+x = rgamma(100, shape = fit.gamma.up$sd[1], scale = 1/fit.gamma.up$estimate[2])
+den = density(x)
+dat = data.frame(x = den$x, y = den$y)
+
+# plot density as points
+ggplot(data = dat, aes(x = x, y = y)) +
+  geom_point(size = 3) +
+  theme_classic()
+```
+
+However, for mearningful results and interpretation, more attention may be required to account for noise in the dataset.
+
 
 ### Business Remarks
 :

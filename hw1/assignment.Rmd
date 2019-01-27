@@ -177,32 +177,62 @@ ggplot(HO2.df, aes(return, fill = direction)) + stat_ecdf(colour = "blue", size 
 ## data frame for plotting and further analysis in $df.
 ## Example: HO2.data = HO2_movement(file = "../data/nyhh02.csv", caption = "HO2 NYH")
 HO2_movement = function(file = "../data/nyhh02.csv", caption = "Heating Oil No. 2: 1986-2016") {
-# Read file and deposit into variable
-HO2 = read.csv(file, header = T, stringsAsFactors = F)
-# stringsAsFactors sets dates as character type
-HO2 = na.omit(HO2) ## to clean up any missing data
-# Construct expanded data frame
-return = as.numeric(diff(log(HO2$DHOILNYH))) * 100
-size = as.numeric(abs(return)) # size is indicator of volatility
-direction = ifelse(return > 0, "up", ifelse(return < 0, "down", "same")) # another indicator of volatility
-date = as.Date(HO2$DATE[-1], "%m/%d/%Y") # length of DATE is length of return +1: omit 1st observation
-price = as.numeric(HO2$DHOILNYH[-1]) # length of DHOILNYH is length of return +1: omit first observation
-HO2.df = na.omit(data.frame(date = date, price = price, return = return, size = size, direction = direction)) # clean up data frame by omitting NAs
-require(dplyr)
-## 1: filter if necessary
-# pivot.table =filter(HO2.df, size > 0.5*max(size))
-## 2: set up data frame for by-group processing
-pivot.table =group_by(HO2.df, direction)
-## 3: calculate the summary metrics
-options(dplyr.width = Inf) ## to display all columns
-HO2.count = length(HO2.df$return)
-pivot.table =summarise(pivot.table, return.avg = mean(return), return.sd = sd(return), quantile.5 = quantile(return, 0.05), quantile.95 = quantile(return, 0.95), percent = (length(return)/HO2.count)*100)
-# Construct transpose of pivot table with xtable()
-require(xtable)
-pivot.xtable = xtable(t(pivot.table), digits = 2, caption = caption, align=rep("r", 4), table.placement="V")
-HO2.caption = "Heating Oil No. 2: 1986-2016"
-output.list = list(table = pivot.table, xtable = pivot.xtable, df = HO2.df)
-return(output.list)
+    # Read file and deposit into variable
+    HO2 = read.csv(file, header = T, stringsAsFactors = F)
+
+    # stringsAsFactors sets dates as character type
+    HO2 = na.omit(HO2) ## to clean up any missing data
+
+    # Construct expanded data frame
+    return = as.numeric(diff(log(HO2$DHOILNYH))) * 100
+    size = as.numeric(abs(return)) # size is indicator of volatility
+    direction = ifelse(return > 0, "up", ifelse(return < 0, "down", "same")) # another indicator of volatility
+    date = as.Date(HO2$DATE[-1], "%m/%d/%Y") # length of DATE is length of return +1: omit 1st observation
+    price = as.numeric(HO2$DHOILNYH[-1]) # length of DHOILNYH is length of return +1: omit first observation
+    HO2.df = na.omit(data.frame(
+        date = date,
+        price = price,
+        return = return,
+        size = size,
+        direction = direction
+    )) # clean up data frame by omitting NAs
+
+    require(dplyr)
+    ## 1: filter if necessary
+    # pivot.table =filter(HO2.df, size > 0.5*max(size))
+
+    ## 2: set up data frame for by-group processing
+    pivot.table =group_by(HO2.df, direction)
+
+    ## 3: calculate the summary metrics
+    options(dplyr.width = Inf) ## to display all columns
+    HO2.count = length(HO2.df$return)
+    pivot.table =summarise(
+        pivot.table,
+        return.avg = mean(return),
+        return.sd = sd(return),
+        quantile.5 = quantile(return, 0.05),
+        quantile.95 = quantile(return, 0.95),
+        percent = (length(return)/HO2.count)*100
+    )
+
+    # Construct transpose of pivot table with xtable()
+    require(xtable)
+    pivot.xtable = xtable(
+        t(pivot.table),
+        digits = 2,
+        caption = caption,
+        align=rep("r", 4),
+        table.placement="V"
+    )
+    HO2.caption = "Heating Oil No. 2: 1986-2016"
+    output.list = list(
+        table = pivot.table,
+        xtable = pivot.xtable,
+        df = HO2.df
+    )
+
+    return(output.list)
 }
 ```
 
@@ -343,7 +373,7 @@ table(HO2.df1$direction)
 table(HO2.df1$return == 0)
 ```
 
-The above summary seem equally dispersed, when only accounting for directional changes. Specifically, the difference between `TRUE`, or `FALSE` for each given case is not significantly different. However, this uniformity may be a result of the implemented transformation. Earlier generated pivot table help visualize the overall distribution in a more concise fashion:
+The above summary seem equally dispersed, when accounting only for directional changes. Specifically, the difference between `TRUE`, or `FALSE` for each given case is not significantly different. However, this uniformity may be a result of the implemented transformation. Earlier generated pivot table help visualize the overall distribution in a more concise fashion:
 
 ```
 direction	return.avg	return.sd	quantile.5	quantile.95	percent

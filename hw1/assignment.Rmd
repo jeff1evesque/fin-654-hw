@@ -483,9 +483,9 @@ plot(fcast)
 
 ### Business Remarks
 
-The earlier calculated gamma distribution, was predicted on generating a random gamma distribution based on particular parameters. Since this computation does not directly provide means for prediction, the ARIMA model was chosen for timeseries modeling and prediction. However, without properly spliting the dataset into a train, and test set, no statistical measure can indicate the accuracy of the model.
+The earlier calculated gamma distribution, was predicated on a random gamma distribution based on the `size` and `return` parameters. Since this computation does not directly provide means for prediction, the ARIMA model was chosen for timeseries modeling and prediction. However, without properly spliting the dataset into a train and test set, no statistical measure could indicate the accuracy of the model.
 
-Determining a mechanism for measuring the test set, could involve defining a tolerance level (p=0.05). Specifically, if predicted values were within the accepted tolerance, the prediction would be considered correct. The ARIMA model in this study did not utilize a test set to verify the accuracy of the model. Therefore, only forecasted `return` values can be generated, and at face value. Additionally, since predictions were performed on an adjusted dataset, an inverse log could rescale `return` value(s) to the original units.
+Determining a mechanism for measuring the test set, could involve defining a tolerance level (p=0.05). Specifically, if the predicted values were within the accepted tolerance, the prediction would be considered correct. Since not test set was utilized, forecasted `return` values can only be accepted at face value. Additionally, since predictions were performed on an adjusted dataset, an inverse log could rescale `return` value(s) to the original units.
 
 The following options may reduce the variable costs associated with producing several products:
 
@@ -494,3 +494,5 @@ The following options may reduce the variable costs associated with producing se
 * establish an aggregated demand profile for H02
 * find H02 substitutes
 * (re)design product that do not need H02
+
+Periodicity of particular events, resulting in increase of oil prices, can be mitigated by some of the above options. Specifically, when oil supply runs, perhaps due to war, or socio-political event(s), having stop measures can reduce temporal volatility.

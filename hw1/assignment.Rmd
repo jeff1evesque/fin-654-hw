@@ -495,4 +495,4 @@ The following options may reduce the variable costs associated with producing se
 * find H02 substitutes
 * (re)design product that do not need H02
 
-Periodicity of particular events, resulting in increase of oil prices, can be mitigated by some of the above options. Specifically, when oil supply runs, perhaps due to war, or socio-political event(s), having stop measures can reduce temporal volatility.
+Periodicity of particular events, resulting in increase of oil prices, can be mitigated by some of the above options. Specifically, when oil supply runs low, either due to war, or socio-political event(s), having stop measures can reduce temporal volatility.

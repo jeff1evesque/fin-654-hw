@@ -397,6 +397,7 @@ Results indicate a `p-value=0.01`, which indicates the null hypothesis can be re
 
 ```{r}
 require(stats)
+par(mar=c(1,1,1,1))
 acf(HO2.df1$return)
 pacf(HO2.df1$return)
 ```
@@ -468,7 +469,7 @@ The original dataset indicated significant volatilty, with seasonal patterns, an
 * 2000's: aftermath of 9/11
 * 2003-2011: war on Iraq
 
-To restructure the dataset for timeseries analysis, the `log` function was applied, followed by a one step difference. Using the "dicker-fuller" test confirmed the latter produced a stationary distribution. Corresponding ACF and Partial ACF were computed, suggesting a moving average `q=4`. 
+To restructure the dataset for timeseries analysis, the `log` function was applied, followed by a one step difference. Using the "dicker-fuller" test confirmed the latter produced a stationary distribution. Corresponding ACF suggests a moving average `q=3`, while the partial ACF indicates a autoregressive `p=5`. 
 
 An `ARIMA` model was computed for the `return` value of `HO2`. Forecasting 30 steps into the future:
 
@@ -476,7 +477,7 @@ An `ARIMA` model was computed for the `return` value of `HO2`. Forecasting 30 st
 library('forecast')
 library('tseries')
 
-fit = arima(HO2.df1$return, order=c(1, 0, 4))
+fit = arima(HO2.df1$return, order=c(5, 0, 3))
 fcast = forecast(fit, h=30)
 plot(fcast)
 ```

@@ -485,7 +485,7 @@ plot(fcast)
 
 The earlier calculated gamma distribution, was predicated on a random gamma distribution based on the `size` and `return` parameters. Since this computation does not directly provide means for prediction, the ARIMA model was chosen for timeseries modeling and prediction. However, without properly spliting the dataset into a train and test set, no statistical measure could indicate the accuracy of the model.
 
-Determining a mechanism for measuring the test set, could involve defining a tolerance level (p=0.05). Specifically, if the predicted values were within the accepted tolerance, the prediction would be considered correct. Since not test set was utilized, forecasted `return` values can only be accepted at face value. Additionally, since predictions were performed on an adjusted dataset, an inverse log could rescale `return` value(s) to the original units.
+Determining a mechanism for measuring the test set, could involve defining a tolerance level (p=0.05). Specifically, if the predicted values were within the accepted tolerance, the prediction would be considered correct. Since no test set was utilized, forecasted `return` values can only be accepted at face value. Additionally, since predictions were performed on an adjusted dataset, an inverse log could rescale `return` value(s) to the original units.
 
 The following options may reduce the variable costs associated with producing several products:
 

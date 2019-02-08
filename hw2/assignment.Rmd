@@ -1,0 +1,367 @@
+---
+title: 'Project #2: foreign exchange market interactions'
+subtitle: 'Live sessions: weeks 3 and 4'
+output:
+  word_document:
+    toc: yes
+  html_document:
+    keep_md: yes
+    self_contained: no
+    toc: yes
+    toc_float: yes
+always_allow_html: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(tidy = TRUE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=36))
+
+knitr::opts_chunk$set(size = "small")
+knitr::opts_hooks$set(fig.width = function(options) {
+  if (options$fig.width < options$fig.height) {
+    options$fig.width = options$fig.height
+  }
+  options
+})
+knitr::knit_hooks$set(mysize = function(before, options, envir) {
+  if (before) 
+    return(options$size)
+})
+```
+
+## Purpose, Process, Product
+
+This group assignment provides practice in foreign exchange markets as well as R models of those markets. Specifically we will practice reading in data, exploring time series, estimating auto and cross correlations, and investigating volatility clustering in financial time series. We will summarize our experiences in debrief. We will pay special attention to the financial economics of exchange rates.
+
+## Assignment
+
+Submit into **Coursework > Assignments and Grading > Assignment 2: Team Project 2 > Submission** an `RMD` file with filename **lastname_firstname_Assignment2.Rmd** as well as the HTML file generated with a Knit. You will need to zip the 2 files before submission..
+
+1. Use headers (##), r-chunks for code, and text to build a report that addresses the two parts of this project.
+
+2. List in the text the 'R' skills needed to complete this project.
+
+3. Explain each of the functions (e.g., `ggplot()`) used to compute and visualize results.
+
+4. Discuss how well did the results begin to answer the business questions posed at the beginning of each part of the project.
+
+```{ }
+
+## General format of Document to be submitted
+
+## Part 1: Exchange Rates data preparation and exploration
+
+### Problem
+(Explanatory text)
+(r chunks)
+### Question 1 - title
+(Explanatory text)
+(r chunks)
+### Question 2 - title
+(Explanatory text)
+(r chunks)
+
+## Part 2: Exchange Rates analysis
+
+### Problem
+(Explanatory text)
+(r chunks)
+### Further questions as needed
+(Explanatory text)
+(r chunks)
+
+## Conclusion
+
+### Skills and Tools
+(text here)
+### Data Insights
+(text here)
+### Business Remarks
+(text here)
+```
+
+## Part 1
+
+In this set we will build and explore a data set using filters and `if` and `diff` statements. We will then answer some questions using plots and a pivot table report. We will then review a function to house our approach in case we would like to run some of the same analysis on other data sets.
+
+### Problem
+
+Marketing and accounts receivables managers at our company continue to note we have a significant exposure to exchange rates. Our functional currency (what we report in financial statements) is in U.S. dollars (USD). 
+
+- Our customer base is located in the United Kingdom, across the European Union, and in Japan. The exposure hits the gross revenue line of our financials. 
+
+- Cash flow is further affected by the ebb and flow of accounts receivable components of working capital in producing and selling several products. When exchange rates are volatile, so is earnings, and more importantly, our cash flow. 
+
+- Our company has also missed earnings forecasts for five straight quarters. 
+
+To get a handle on exchange rate exposures we download this data set and review some basic aspects of the exchange rates. 
+
+```{r }
+# Read in data
+library(zoo)
+library(xts)
+library(ggplot2)
+# Read and review a csv file from FRED
+exrates <- na.omit(read.csv("../data/exrates.csv", header = TRUE))
+# Check the data
+head(exrates)
+tail(exrates)
+str(exrates)
+# Begin to explore the data
+summary(exrates)
+```
+
+### Questions
+
+1. What is the nature of exchange rates in general and in particular for this data set? We want to reflect the ups and downs of rate movements, known to managers as currency appreciation and depreciation. 
+
+- We will calculate percentage changes as log returns of currency pairs. Our interest is in the ups and downs. To look at that we use `if` and `else` statements to define a new column called `direction`. We will build a data frame to house this initial analysis. 
+
+- Using this data frame, interpret appreciation and depreciation in terms of the impact on the receipt of cash flow from customer's accounts that are denominated in other than our USD functional currency.
+
+```{r }
+# Compute log differences percent using as.matrix to force numeric type
+exrates.r <- diff(log(as.matrix(exrates[, -1]))) * 100
+head(exrates.r)
+tail(exrates.r)
+str(exrates.r)
+# Create size and direction
+size <- na.omit(abs(exrates.r)) # size is indicator of volatility
+head(size)
+# colnames(size) <- paste(colnames(size),".size", sep = "") # Teetor
+direction <- ifelse(exrates.r > 0, 1, ifelse(exrates.r < 0, -1, 0)) # another indicator of volatility
+# colnames(direction) <- paste(colnames(direction),".dir", sep = "")
+head(direction)
+# Convert into a time series object: 
+# 1. Split into date and rates
+dates <- as.Date(exrates$DATE[-1], "%m/%d/%Y")
+values <- cbind(exrates.r, size, direction)
+# for dplyr pivoting we need a data frame
+exrates.df <- data.frame(dates = dates, returns = exrates.r, size = size, direction = direction)
+str(exrates.df) # notice the returns.* and direction.* prefixes
+# 2. Make an xts object with row names equal to the dates
+exrates.xts <- na.omit(as.xts(values, dates)) #order.by=as.Date(dates, "%d/%m/%Y")))
+str(exrates.xts)
+exrates.zr <- na.omit(as.zooreg(exrates.xts))
+str(exrates.zr)
+head(exrates.xts)
+```
+
+We can plot with the `ggplot2` package. In the `ggplot` statements we use `aes`, "aesthetics", to pick `x` (horizontal) and `y` (vertical) axes. Use `group =1` to ensure that all data is plotted. The added (`+`) `geom_line` is the geometrical method that builds the line plot.
+
+```{r }
+library(ggplot2)
+library(plotly)
+title.chg <- "Exchange Rate Percent Changes"
+p1 <- autoplot.zoo(exrates.xts[,1:4]) + ggtitle(title.chg) + ylim(-5, 5)
+p2 <- autoplot.zoo(exrates.xts[,5:8]) + ggtitle(title.chg) + ylim(-5, 5)
+ggplotly(p1)
+``` 
+
+2. Let's dig deeper and compute mean, standard deviation, etc. Load the `data_moments()` function. Run the function using the `exrates` data and write a `knitr::kable()` report.
+
+```{r }
+acf(coredata(exrates.xts[ , 1:4])) # returns
+acf(coredata(exrates.xts[ , 5:8])) # sizes
+pacf(coredata(exrates.xts[ , 1:4])) # returns
+pacf(coredata(exrates.xts[ , 5:8])) # sizes
+# Load the data_moments() function
+## data_moments function
+## INPUTS: r vector
+## OUTPUTS: list of scalars (mean, sd, median, skewness, kurtosis)
+data_moments <- function(data){
+  library(moments)
+  library(matrixStats)
+  mean.r <- colMeans(data)
+  median.r <- colMedians(data)
+  sd.r <- colSds(data)
+  IQR.r <- colIQRs(data)
+  skewness.r <- skewness(data)
+  kurtosis.r <- kurtosis(data)
+  result <- data.frame(mean = mean.r, median = median.r, std_dev = sd.r, IQR = IQR.r, skewness = skewness.r, kurtosis = kurtosis.r)
+  return(result)
+}
+# Run data_moments()
+answer <- data_moments(exrates.xts[, 5:8])
+# Build pretty table
+answer <- round(answer, 4)
+knitr::kable(answer)
+mean(exrates.xts[,4])
+```
+
+## Part 2
+
+We will use the data from the first part to investigate the interactions of the distribution of exchange rates.
+
+### Problem
+
+We want to characterize the distribution of up and down movements visually. Also we would like to repeat the analysis periodically for inclusion in management reports.
+
+### Questions 
+1. How can we show the shape of our exposure to euros, especially given our tolerance for risk? Suppose corporate policy set tolerance at 95\%. Let's use the `exrates.df` data frame with `ggplot2` and the cumulative relative frequency function `stat_ecdf`.
+
+```{r }
+exrates.tol.pct <- 0.95
+exrates.tol <- quantile(exrates.df$returns.USD.EUR, exrates.tol.pct)
+exrates.tol.label <- paste("Tolerable Rate = ", round(exrates.tol, 2), "%", sep = "")
+p <- ggplot(exrates.df, aes(returns.USD.EUR, fill = direction.USD.EUR)) + stat_ecdf(colour = "blue", size = 0.75, geom = "point") + geom_vline(xintercept = exrates.tol, colour = "red", size = 1.5) + annotate("text", x = exrates.tol + 1 , y = 0.75, label = exrates.tol.label, colour = "darkred")
+ggplotly(p)
+```
+
+2. What is the history of correlations in the exchange rate markets? If this is a "history," then we have to manage the risk that conducting business in one country will definitely affect business in another. Further that bad things will be followed by more bad things more often than good things. We will create a rolling correlation function, `corr_rolling`, and embed this function into the `rollapply()` function (look this one up!).
+
+```{r }
+one <- ts(exrates.df$returns.USD.EUR)
+two <- ts(exrates.df$returns.USD.GBP)
+# or
+one <- ts(exrates.zr[,1])
+two <- ts(exrates.zr[,2])
+ccf(abs(one), abs(two), main = "GBP vs. EUR", lag.max = 20, xlab = "", ylab = "", ci.col = "red")
+# build function to repeat these routines
+run_ccf <- function(one, two, main = "one vs. two", lag = 20, color = "red"){
+  # one and two are equal length series
+  # main is title
+  # lag is number of lags in cross-correlation
+  # color is color of dashed confidence interval bounds
+  stopifnot(length(one) == length(two))
+  one <- ts(one)
+  two <- ts(two)
+  main <- main
+  lag <- lag
+  color <- color
+  ccf(one, two, main = main, lag.max = lag, xlab = "", ylab = "", ci.col = color)
+  #end run_ccf
+}
+one <- ts(exrates.df$returns.USD.EUR)
+two <- ts(exrates.df$returns.USD.GBP)
+# or
+one <- exrates.zr[,1]
+two <- exrates.zr[,2]
+title <- "EUR vs. GBP"
+run_ccf(abs(one), abs(two), main = title, lag = 20, color = "red")
+# now for volatility (sizes)
+one <- ts(abs(exrates.zr[,1]))
+two <- ts(abs(exrates.zr[,2]))
+title <- "EUR vs. GBP: volatility"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+# We see some small raw correlations across time with raw returns. More revealing, we see volatility of correlation clustering using return sizes. 
+```
+
+One more experiment, rolling correlations and volatilities using these functions:	
+
+```{r}
+corr_rolling <- function(x) {	
+  dim <- ncol(x)	
+  corr_r <- cor(x)[lower.tri(diag(dim), diag = FALSE)]	
+  return(corr_r)	
+}
+vol_rolling <- function(x){
+  library(matrixStats)
+  vol_r <- colSds(x)
+  return(vol_r)
+}
+ALL.r <- exrates.xts[, 1:4]
+window <- 90 #reactive({input$window})
+corr_r <- rollapply(ALL.r, width = window, corr_rolling, align = "right", by.column = FALSE)
+colnames(corr_r) <- c("EUR.GBP", "EUR.CNY", "EUR.JPY", "GBP.CNY", "GBP.JPY", "CNY.JPY")
+vol_r <- rollapply(ALL.r, width = window, vol_rolling, align = "right", by.column = FALSE)
+colnames(vol_r) <- c("EUR.vol", "GBP.vol", "CNY.vol", "JPY.vol")
+year <- format(index(corr_r), "%Y")
+r_corr_vol <- merge(ALL.r, corr_r, vol_r, year)
+```
+
+
+4. How related are correlations and volatilities? Put another way, do we have to be concerned that inter-market transactions (e.g., customers and vendors transacting in more than one currency) can affect transactions in a single market? Let's  model the the `exrate` data to understand how correlations and volatilities depend upon one another.
+
+```{r}
+library(quantreg)
+taus <- seq(.05,.95, .05)	# Roger Koenker UIC Bob Hogg and Allen Craig
+fit.rq.CNY.JPY <- rq(log(CNY.JPY) ~ log(JPY.vol), tau = taus, data = r_corr_vol)	
+fit.lm.CNY.JPY <- lm(log(CNY.JPY) ~ log(JPY.vol), data = r_corr_vol)	
+# Some test statements	
+CNY.JPY.summary <- summary(fit.rq.CNY.JPY, se = "boot")
+CNY.JPY.summary
+plot(CNY.JPY.summary)
+```
+
+Here is the quantile regression part of the package.
+	
+1. We set `taus` as the quantiles of interest.	
+2. We run the quantile regression using the `quantreg` package and a call to the `rq` function.	
+3. We can overlay the quantile regression results onto the standard linear model regression.	
+4. We can sensitize our analysis with the range of upper and lower bounds on the parameter estimates of the relationship between correlation and volatility.
+5. The log()-log() transformation allows us to interpret the regression coefficients as elasticities, which vary with the quantile. The larger the elasticity, especially if the absolute value is greater than one, the more risk dependence one market has on the other.
+6. The risk relationships can also be viewed year by year. Here we see very different patterns
+7. $y = a + bx + e$ is interpreted as systematic movements in $y = a + bx$, while unsystematic movements are simply $e$.
+ 	
+### Animation
+
+```{r}
+library(quantreg)
+library(magick)
+
+img <- image_graph(res = 96)
+datalist <- split(r_corr_vol, r_corr_vol$year)
+out <- lapply(datalist, function(data){
+  p <- ggplot(data, aes(JPY.vol, CNY.JPY)) +
+    geom_point() + 
+    ggtitle(data$year) + 
+    geom_quantile(quantiles = c(0.05, 0.95)) + 
+    geom_quantile(quantiles = 0.5, linetype = "longdash") +
+    geom_density_2d(colour = "red")  
+  print(p)
+})
+while (!is.null(dev.list()))  dev.off()
+#img <- image_background(image_trim(img), 'white')
+animation <- image_animate(img, fps = .5)
+animation	
+```
+	
+Attempt interpretations to help managers understand the way market interactions affect accounts receivables.
+
+## Notes on lead and lag
+
+In the `ccf()` function we get results that produce positive and negative lags. A positive lag looks back and a negative lag (a lead) looks forward in the history of a time series. Leading and lagging two different serries, then computing the moments and corelations show a definite asymmetry.
+
+Suppose we lead the USD.EUR return by 5 days and lag the USD.GBP by 5 days. We will compare the correlation in this case with the opposite: lead the USD.GBP return by 5 days and lag the USD.EUR by 5 days.  We will use the `dplyr` package to help us.
+
+```{r}
+library(dplyr)
+x <- as.numeric(exrates.df$returns.USD.EUR) # USD.EUR
+y <- as.numeric(exrates.df$returns.USD.GBP) # USD.GBP
+xy.df <- na.omit(data.frame(date = dates, ahead_x= lead(x, 5), behind_y = lag(y, 5)))
+yx.df <- na.omit(data.frame(date = dates, ahead_y =lead(y, 5), behind_x = lag(x, 5)))
+answer <- data_moments(na.omit(as.matrix(xy.df[,2:3])))
+answer <- round(answer, 4)
+knitr::kable(answer)
+answer <- data_moments(na.omit(as.matrix(yx.df[,2:3])))
+answer <- round(answer, 4)
+knitr::kable(answer)
+cor(as.numeric(xy.df$ahead_x), as.numeric(xy.df$behind_y))
+cor(as.numeric(yx.df$ahead_y), as.numeric(yx.df$behind_x))
+```
+
+Leading x, lagging y will produce a negative correlation. The opposite produces an even smaller and positive correlation. Differences in means, etc. are not huge between the two cases, but when combined produce the correlational differences.
+
+
+
+## Conclusion
+
+### Skills and Tools
+:
+(REPLACE text here)
+What skills contributed towards data exploration and anaytics?
+:
+
+### Data Insights
+:
+(REPLACE text here)
+Explain some of the data exploration, statistics and graphs here - include moments.
+:
+
+### Business Remarks
+:
+(REPLACE text here)
+Attempt interpretations to help managers understand the way market interactions affect accounts receivables.
+Can you tell what happens to Chinese customers when USD value climbs? 

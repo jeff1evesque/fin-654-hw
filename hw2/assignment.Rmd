@@ -1,499 +1,367 @@
 ---
-title: "Project 1 -- HO2 Analysis"
-subtitle: "Live Sessions: weeks 1 and 2"
-output: word_document
-toc: TRUE
-toc_float: TRUE
+title: 'Project #2: foreign exchange market interactions'
+subtitle: 'Live sessions: weeks 3 and 4'
+output:
+  word_document:
+    toc: yes
+  html_document:
+    keep_md: yes
+    self_contained: no
+    toc: yes
+    toc_float: yes
+always_allow_html: yes
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(tidy = TRUE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=36))
+
+knitr::opts_chunk$set(size = "small")
+knitr::opts_hooks$set(fig.width = function(options) {
+  if (options$fig.width < options$fig.height) {
+    options$fig.width = options$fig.height
+  }
+  options
+})
+knitr::knit_hooks$set(mysize = function(before, options, envir) {
+  if (before) 
+    return(options$size)
+})
+```
+
+## Purpose, Process, Product
+
+This group assignment provides practice in foreign exchange markets as well as R models of those markets. Specifically we will practice reading in data, exploring time series, estimating auto and cross correlations, and investigating volatility clustering in financial time series. We will summarize our experiences in debrief. We will pay special attention to the financial economics of exchange rates.
+
+## Assignment
+
+Submit into **Coursework > Assignments and Grading > Assignment 2: Team Project 2 > Submission** an `RMD` file with filename **lastname_firstname_Assignment2.Rmd** as well as the HTML file generated with a Knit. You will need to zip the 2 files before submission..
+
+1. Use headers (##), r-chunks for code, and text to build a report that addresses the two parts of this project.
+
+2. List in the text the 'R' skills needed to complete this project.
+
+3. Explain each of the functions (e.g., `ggplot()`) used to compute and visualize results.
+
+4. Discuss how well did the results begin to answer the business questions posed at the beginning of each part of the project.
+
+```{ }
+
+## General format of Document to be submitted
+
+## Part 1: Exchange Rates data preparation and exploration
+
+### Problem
+(Explanatory text)
+(r chunks)
+### Question 1 - title
+(Explanatory text)
+(r chunks)
+### Question 2 - title
+(Explanatory text)
+(r chunks)
+
+## Part 2: Exchange Rates analysis
+
+### Problem
+(Explanatory text)
+(r chunks)
+### Further questions as needed
+(Explanatory text)
+(r chunks)
+
+## Conclusion
+
+### Skills and Tools
+(text here)
+### Data Insights
+(text here)
+### Business Remarks
+(text here)
+```
 
 ## Part 1
 
-In this set we will build a data set using filters and `if` and `diff` statements. We will then answer some questions using plots and a pivot table report. We will then write a function to house our approach in case we would like to run the same analysis on other data sets.
+In this set we will build and explore a data set using filters and `if` and `diff` statements. We will then answer some questions using plots and a pivot table report. We will then review a function to house our approach in case we would like to run some of the same analysis on other data sets.
 
 ### Problem
 
-Supply chain managers at our company continue to note we have a significant exposure to heating oil prices (Heating Oil No. 2, or HO2), specifically New York Harbor. The exposure hits the variable cost of producing several products. When HO2 is volatile, so is earnings. Our company has missed earnings forecasts for five straight quarters. To get a handle on HO2 we download this data set and review some basic aspects of the prices. 
+Marketing and accounts receivables managers at our company continue to note we have a significant exposure to exchange rates. Our functional currency (what we report in financial statements) is in U.S. dollars (USD). 
 
-```{r eval = TRUE}
+- Our customer base is located in the United Kingdom, across the European Union, and in Japan. The exposure hits the gross revenue line of our financials. 
+
+- Cash flow is further affected by the ebb and flow of accounts receivable components of working capital in producing and selling several products. When exchange rates are volatile, so is earnings, and more importantly, our cash flow. 
+
+- Our company has also missed earnings forecasts for five straight quarters. 
+
+To get a handle on exchange rate exposures we download this data set and review some basic aspects of the exchange rates. 
+
+```{r }
 # Read in data
-# package EIAdata
-#
-HO2 = read.csv("../data/nyhh02.csv", header = T, stringsAsFactors = F)
-# stringsAsFactors sets dates as character type
-head(HO2)
-HO2 = na.omit(HO2) ## to clean up any missing data
-# use na.approx() as well
-str(HO2) # review the structure of the data so far
+library(zoo)
+library(xts)
+library(ggplot2)
+# Read and review a csv file from FRED
+exrates <- na.omit(read.csv("../data/exrates.csv", header = TRUE))
+# Check the data
+head(exrates)
+tail(exrates)
+str(exrates)
+# Begin to explore the data
+summary(exrates)
 ```
 
 ### Questions
 
-1. What is the nature of HO2 returns? We want to reflect the ups and downs of price movements, something of prime interest to management. First, we calculate percentage changes as log returns. Our interest is in the ups and downs. To look at that we use `if` and `else` statements to define a new column called `direction`. We will build a data frame to house this analysis.
+1. What is the nature of exchange rates in general and in particular for this data set? We want to reflect the ups and downs of rate movements, known to managers as currency appreciation and depreciation. 
 
-```{r eval = TRUE}
-# Construct expanded data frame
-#
-# size + direction, indicator of volatility
-# date, length of DATE is length of return +1: omit 1st observation
-# price, length of DHOILNYH is length of return +1: omit first observation
-#
-return1 = as.numeric(diff(log(HO2$DHOILNYH))) * 100 # Euler
-size1 = abs(return1)
-direction1 = ifelse(return1 > 0, "up", ifelse(return1 < 0, "down", "same"))
-date1 = as.Date(HO2$DATE[-1], "%m/%d/%Y")
-price1 = as.numeric(HO2$DHOILNYH[-1])
-price1 = as.numeric(diff(log(HO2$DHOILNYH)))
-HO2.df1 = na.omit(data.frame(
-    date = date1,
-    price = price1,
-    return = return1,
-    size = size1,
-    direction = direction1
-))
+- We will calculate percentage changes as log returns of currency pairs. Our interest is in the ups and downs. To look at that we use `if` and `else` statements to define a new column called `direction`. We will build a data frame to house this initial analysis. 
 
-return = HO2$DHOILNYH
-size = abs(return)
-direction = ifelse(return > 0, "up", ifelse(return < 0, "down", "same"))
-date = as.Date(HO2$DATE, "%m/%d/%Y")
-price = as.numeric(HO2$DHOILNYH)
-HO2.df = na.omit(data.frame(
-    date = date,
-    price = price,
-    return = return,
-    size = size,
-    direction = direction
-))
-``` 
+- Using this data frame, interpret appreciation and depreciation in terms of the impact on the receipt of cash flow from customer's accounts that are denominated in other than our USD functional currency.
+
+```{r }
+# Compute log differences percent using as.matrix to force numeric type
+exrates.r <- diff(log(as.matrix(exrates[, -1]))) * 100
+head(exrates.r)
+tail(exrates.r)
+str(exrates.r)
+# Create size and direction
+size <- na.omit(abs(exrates.r)) # size is indicator of volatility
+head(size)
+# colnames(size) <- paste(colnames(size),".size", sep = "") # Teetor
+direction <- ifelse(exrates.r > 0, 1, ifelse(exrates.r < 0, -1, 0)) # another indicator of volatility
+# colnames(direction) <- paste(colnames(direction),".dir", sep = "")
+head(direction)
+# Convert into a time series object: 
+# 1. Split into date and rates
+dates <- as.Date(exrates$DATE[-1], "%m/%d/%Y")
+values <- cbind(exrates.r, size, direction)
+# for dplyr pivoting we need a data frame
+exrates.df <- data.frame(dates = dates, returns = exrates.r, size = size, direction = direction)
+str(exrates.df) # notice the returns.* and direction.* prefixes
+# 2. Make an xts object with row names equal to the dates
+exrates.xts <- na.omit(as.xts(values, dates)) #order.by=as.Date(dates, "%d/%m/%Y")))
+str(exrates.xts)
+exrates.zr <- na.omit(as.zooreg(exrates.xts))
+str(exrates.zr)
+head(exrates.xts)
+```
 
 We can plot with the `ggplot2` package. In the `ggplot` statements we use `aes`, "aesthetics", to pick `x` (horizontal) and `y` (vertical) axes. Use `group =1` to ensure that all data is plotted. The added (`+`) `geom_line` is the geometrical method that builds the line plot.
 
-```{r echo = TRUE, eval = TRUE}
+```{r }
 library(ggplot2)
-library(gridExtra)
-p1 = ggplot(HO2.df, aes(x = date, y = return, group = 1)) +
-    geom_line(colour = "blue") +
-    ggtitle('Standard Plot: 1st element removed')
+library(plotly)
+title.chg <- "Exchange Rate Percent Changes"
+p1 <- autoplot.zoo(exrates.xts[,1:4]) + ggtitle(title.chg) + ylim(-5, 5)
+p2 <- autoplot.zoo(exrates.xts[,5:8]) + ggtitle(title.chg) + ylim(-5, 5)
+ggplotly(p1)
+``` 
 
-p2 = ggplot(HO2.df1, aes(x = date1, y = return1, group = 1)) +
-    geom_line(colour = "blue") +
-    ggtitle('Normalized Data')
+2. Let's dig deeper and compute mean, standard deviation, etc. Load the `data_moments()` function. Run the function using the `exrates` data and write a `knitr::kable()` report.
 
-grid.arrange(p1, p2, nrow=2)
-```
-
-Let's try a bar graph of the absolute value of price rates. We use `geom_bar` to build this picture.
-
-```{r echo = TRUE, eval = TRUE}
-library(ggplot2)
-p3 = ggplot(HO2.df1, aes(x = date, y = size, group = 1)) +
-    geom_bar(stat = "identity", colour = "green") +
-    ggtitle('Absolute Value: Price Rates')
-
-p4 = ggplot(HO2.df1, aes(date, size)) +
-    geom_bar(stat = "identity", colour = "darkorange") +
-    geom_line(data = HO2.df1, aes(date, return), colour = "blue") +
-    ggtitle('Return on Size Overlay')
-
-grid.arrange(p3, p4, nrow=2)
-```
-
-2. Let's dig deeper and compute mean, standard deviation, etc. Load the `data_moments()` function. Run the function using the `HO2.df1$return` subset of the data and write a `knitr::kable()` report.
-
-```{r echo = TRUE, eval = TRUE}
-data_moments = function(data) {
-    library(moments)
-    mean.r = mean(data)
-    sd.r = sd(data)
-    median.r = median(data)
-    skewness.r = skewness(data)
-    kurtosis.r = kurtosis(data)
-    result = data.frame(
-        mean = mean.r,
-        std_dev = sd.r,
-        median = median.r,
-        skewness = skewness.r,
-        kurtosis = kurtosis.r
-    )
-
-    return(result)
+```{r }
+acf(coredata(exrates.xts[ , 1:4])) # returns
+acf(coredata(exrates.xts[ , 5:8])) # sizes
+pacf(coredata(exrates.xts[ , 1:4])) # returns
+pacf(coredata(exrates.xts[ , 5:8])) # sizes
+# Load the data_moments() function
+## data_moments function
+## INPUTS: r vector
+## OUTPUTS: list of scalars (mean, sd, median, skewness, kurtosis)
+data_moments <- function(data){
+  library(moments)
+  library(matrixStats)
+  mean.r <- colMeans(data)
+  median.r <- colMedians(data)
+  sd.r <- colSds(data)
+  IQR.r <- colIQRs(data)
+  skewness.r <- skewness(data)
+  kurtosis.r <- kurtosis(data)
+  result <- data.frame(mean = mean.r, median = median.r, std_dev = sd.r, IQR = IQR.r, skewness = skewness.r, kurtosis = kurtosis.r)
+  return(result)
 }
-
 # Run data_moments()
-answer = data_moments(HO2.df1$return)
-
+answer <- data_moments(exrates.xts[, 5:8])
 # Build pretty table
-answer = round(answer, 4)
+answer <- round(answer, 4)
 knitr::kable(answer)
-```
-
-3. Let's pivot `size` and `return` on `direction`. What is the average and range of returns by direction? How often might we view positive or negative movements in HO2?
-
-```{r echo = TRUE, eval = TRUE}
-# Counting
-table(HO2.df1$return < 0) # one way
-table(HO2.df1$return > 0)
-table(HO2.df1$direction) # this counts 0 returns as negative
-table(HO2.df1$return == 0)
-
-# Pivoting
-library(dplyr)
-## 1: filter to those houses with fairly high prices
-# pivot.table =filter(HO2.df, size > 0.5*max(size))
-
-## 2: set up data frame for by-group processing
-pivot.table =group_by(HO2.df1, direction)
-
-## 3: calculate the summary metrics
-options(dplyr.width = Inf) ## to display all columns
-HO2.count = length(HO2.df1$return)
-pivot.table = summarise(
-  pivot.table,
-  return.avg = round(mean(return), 4),
-  return.sd = round(sd(return), 4),
-  quantile.5 = round(quantile(return, 0.05), 4),
-  quantile.95 = round(quantile(return, 0.95), 4),
-  percent = round((length(return)/HO2.count)*100, 2)
-)
-# Build visual
-knitr::kable(pivot.table, digits = 2)
-
-# Here is how we can produce a LaTeX formatted and rendered table
-library(xtable)
-HO2.caption = "Heating Oil No. 2: 1986-2016"
-print(xtable(t(pivot.table), digits = 2, caption = HO2.caption, align=rep("r", 4), table.placement="V"))
-print(xtable(answer), digits = 2)
+mean(exrates.xts[,4])
 ```
 
 ## Part 2
 
-We will use the data from Part 1 to investigate the distribution of returns we generated. This will entail fitting the data to some parametric distributions as well as 
+We will use the data from the first part to investigate the interactions of the distribution of exchange rates.
 
 ### Problem
 
-We want to further characterize the distribution of up and down movements visually. Also we would like to repeat the analysis periodically for inclusion in management reports.
+We want to characterize the distribution of up and down movements visually. Also we would like to repeat the analysis periodically for inclusion in management reports.
 
-### Questions
+### Questions 
+1. How can we show the shape of our exposure to euros, especially given our tolerance for risk? Suppose corporate policy set tolerance at 95\%. Let's use the `exrates.df` data frame with `ggplot2` and the cumulative relative frequency function `stat_ecdf`.
 
-1. How can we show the differences in the shape of ups and downs in HO2, especially given our tolerance for risk? We can use the `HO2.df1` data frame with `ggplot2` and the cumulative relative frequency function `stat_ecdf` to begin to understand this data.
-
-```{r echo = TRUE, eval = TRUE}
-HO2.tol.pct = 0.95
-HO2.tol = quantile(HO2.df1$return, HO2.tol.pct)
-HO2.tol.label = paste("Tolerable Rate = ", round(HO2.tol, 2), sep = "")
-ggplot(HO2.df, aes(return, fill = direction)) +
-    stat_ecdf(colour = "blue", size = 0.75) +
-    geom_vline(xintercept = HO2.tol, colour = "red", size = 1.5) +
-    annotate("text", x = HO2.tol+5 , y = 0.75, label = HO2.tol.label, colour = "darkred")
+```{r }
+exrates.tol.pct <- 0.95
+exrates.tol <- quantile(exrates.df$returns.USD.EUR, exrates.tol.pct)
+exrates.tol.label <- paste("Tolerable Rate = ", round(exrates.tol, 2), "%", sep = "")
+p <- ggplot(exrates.df, aes(returns.USD.EUR, fill = direction.USD.EUR)) + stat_ecdf(colour = "blue", size = 0.75, geom = "point") + geom_vline(xintercept = exrates.tol, colour = "red", size = 1.5) + annotate("text", x = exrates.tol + 1 , y = 0.75, label = exrates.tol.label, colour = "darkred")
+ggplotly(p)
 ```
 
-2. How can we regularly, and reliably, analyze HO2 price movements? For this requirement, let's write a function similar to `data_moments`. Name this new function `HO2_movement()`.
+2. What is the history of correlations in the exchange rate markets? If this is a "history," then we have to manage the risk that conducting business in one country will definitely affect business in another. Further that bad things will be followed by more bad things more often than good things. We will create a rolling correlation function, `corr_rolling`, and embed this function into the `rollapply()` function (look this one up!).
 
-```{r echo = TRUE, echo = TRUE}
-## HO2_movement(file, caption)
-## input: HO2 csv file from /data directory
-## output: result for input to kable in $table and xtable in $xtable; 
-## data frame for plotting and further analysis in $df.
-## Example: HO2.data = HO2_movement(file = "../data/nyhh02.csv", caption = "HO2 NYH")
-HO2_movement = function(file = "../data/nyhh02.csv", caption = "Heating Oil No. 2: 1986-2016") {
-    # Read file and deposit into variable
-    HO2 = read.csv(file, header = T, stringsAsFactors = F)
-
-    # stringsAsFactors sets dates as character type
-    HO2 = na.omit(HO2) ## to clean up any missing data
-
-    #
-    # Construct expanded data frame
-    #
-    # size + direction, indicator of volatility
-    # date, length of DATE is length of return +1: omit 1st observation
-    # price, length of DHOILNYH is length of return +1: omit first observation
-    #
-    return = as.numeric(diff(log(HO2$DHOILNYH))) * 100
-    size = as.numeric(abs(return))
-    direction = ifelse(return > 0, "up", ifelse(return < 0, "down", "same"))
-    date = as.Date(HO2$DATE[-1], "%m/%d/%Y")
-    price = as.numeric(HO2$DHOILNYH[-1])
-    HO2.df = na.omit(data.frame(
-        date = date,
-        price = price,
-        return = return,
-        size = size,
-        direction = direction
-    ))
-
-    require(dplyr)
-
-    ## 1: filter if necessary
-    pivot.table =filter(HO2.df, size > 0.5*max(size))
-
-    ## 2: set up data frame for by-group processing
-    pivot.table =group_by(HO2.df, direction)
-
-    ## 3: calculate the summary metrics
-    options(dplyr.width = Inf) ## to display all columns
-    HO2.count = length(HO2.df$return)
-    pivot.table =summarise(
-        pivot.table,
-        return.avg = mean(return),
-        return.sd = sd(return),
-        quantile.5 = quantile(return, 0.05),
-        quantile.95 = quantile(return, 0.95),
-        percent = (length(return)/HO2.count)*100
-    )
-
-    # Construct transpose of pivot table with xtable()
-    require(xtable)
-    pivot.xtable = xtable(
-        t(pivot.table),
-        digits = 2,
-        caption = caption,
-        align=rep("r", 4),
-        table.placement="V"
-    )
-    HO2.caption = "Heating Oil No. 2: 1986-2016"
-    output.list = list(
-        table = pivot.table,
-        xtable = pivot.xtable,
-        df = HO2.df
-    )
-
-    return(output.list)
+```{r }
+one <- ts(exrates.df$returns.USD.EUR)
+two <- ts(exrates.df$returns.USD.GBP)
+# or
+one <- ts(exrates.zr[,1])
+two <- ts(exrates.zr[,2])
+ccf(abs(one), abs(two), main = "GBP vs. EUR", lag.max = 20, xlab = "", ylab = "", ci.col = "red")
+# build function to repeat these routines
+run_ccf <- function(one, two, main = "one vs. two", lag = 20, color = "red"){
+  # one and two are equal length series
+  # main is title
+  # lag is number of lags in cross-correlation
+  # color is color of dashed confidence interval bounds
+  stopifnot(length(one) == length(two))
+  one <- ts(one)
+  two <- ts(two)
+  main <- main
+  lag <- lag
+  color <- color
+  ccf(one, two, main = main, lag.max = lag, xlab = "", ylab = "", ci.col = color)
+  #end run_ccf
 }
+one <- ts(exrates.df$returns.USD.EUR)
+two <- ts(exrates.df$returns.USD.GBP)
+# or
+one <- exrates.zr[,1]
+two <- exrates.zr[,2]
+title <- "EUR vs. GBP"
+run_ccf(abs(one), abs(two), main = title, lag = 20, color = "red")
+# now for volatility (sizes)
+one <- ts(abs(exrates.zr[,1]))
+two <- ts(abs(exrates.zr[,2]))
+title <- "EUR vs. GBP: volatility"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+# We see some small raw correlations across time with raw returns. More revealing, we see volatility of correlation clustering using return sizes. 
 ```
 
-Test `HO2_movement()` with data and display results in a table with `2` decimal places.
-```{r echo = TRUE, eval = TRUE}
-knitr::kable(HO2_movement(file = "../data/nyhh02.csv")$table, digits = 2)
+One more experiment, rolling correlations and volatilities using these functions:	
+
+```{r}
+corr_rolling <- function(x) {	
+  dim <- ncol(x)	
+  corr_r <- cor(x)[lower.tri(diag(dim), diag = FALSE)]	
+  return(corr_r)	
+}
+vol_rolling <- function(x){
+  library(matrixStats)
+  vol_r <- colSds(x)
+  return(vol_r)
+}
+ALL.r <- exrates.xts[, 1:4]
+window <- 90 #reactive({input$window})
+corr_r <- rollapply(ALL.r, width = window, corr_rolling, align = "right", by.column = FALSE)
+colnames(corr_r) <- c("EUR.GBP", "EUR.CNY", "EUR.JPY", "GBP.CNY", "GBP.JPY", "CNY.JPY")
+vol_r <- rollapply(ALL.r, width = window, vol_rolling, align = "right", by.column = FALSE)
+colnames(vol_r) <- c("EUR.vol", "GBP.vol", "CNY.vol", "JPY.vol")
+year <- format(index(corr_r), "%Y")
+r_corr_vol <- merge(ALL.r, corr_r, vol_r, year)
 ```
 
-Morale: more work today (build the function) means less work tomorrow (write yet another report).
 
-3. Suppose we wanted to simulate future movements in HO2 returns. What distribution might we use to run those scenarios? Here, let's use the `MASS` package's `fitdistr()` function to find the optimal fit of the HO2 data to a parametric distribution. We will use the `gamma` distribution to simulate future heating oil \#2 price scenarios.
+4. How related are correlations and volatilities? Put another way, do we have to be concerned that inter-market transactions (e.g., customers and vendors transacting in more than one currency) can affect transactions in a single market? Let's  model the the `exrate` data to understand how correlations and volatilities depend upon one another.
 
-```{r echo = TRUE, eval = TRUE}
-library(MASS)
-HO2.data = HO2_movement(file = "../data/nyhh02.csv", caption = "HO2 NYH")$df
-str(HO2.data)
-fit.gamma.up = fitdistr(
-    HO2.data[HO2.data$direction == "up", "return"],
-    "gamma",
-    hessian = TRUE
-)
-
-# fit.t.same = fitdistr(HO2.data[HO2.data$direction == "same", "return"], "gamma", hessian = TRUE) # a problem here is all observations = 0
-
-# gamma distribution properties
-fit.t.down = fitdistr(HO2.data[HO2.data$direction == "down", "return"], "t", hessian = TRUE)
-fit.t.down
-fit.gamma.down = fitdistr(-HO2.data[HO2.data$direction == "down", "return"], "gamma", hessian = TRUE)
-fit.gamma.down
-
-# gamma density: up
-x_up = rgamma(
-  100,
-  shape = fit.gamma.up$estimate[1],
-  scale = 1/fit.gamma.up$estimate[2]
-)
-density_up = density(x_up)
-d_up = data.frame(x = density_up$x, y = density_up$y)
-
-# plot density as points
-ggplot(data = d_up, aes(x = x, y = y)) +
-  geom_point(size = 3) +
-  theme_classic()
-
-# gamma density: down
-x_down = rgamma(
-  100,
-  shape = fit.gamma.down$estimate[1],
-  scale = 1/fit.gamma.down$estimate[2]
-)
-density_down = density(x_down)
-d_down = data.frame(x = density_down$x, y = density_down$y)
-
-# plot density as points
-ggplot(data = d_down, aes(x = x, y = y)) +
-  geom_point(size = 3) +
-  theme_classic()
+```{r}
+library(quantreg)
+taus <- seq(.05,.95, .05)	# Roger Koenker UIC Bob Hogg and Allen Craig
+fit.rq.CNY.JPY <- rq(log(CNY.JPY) ~ log(JPY.vol), tau = taus, data = r_corr_vol)	
+fit.lm.CNY.JPY <- lm(log(CNY.JPY) ~ log(JPY.vol), data = r_corr_vol)	
+# Some test statements	
+CNY.JPY.summary <- summary(fit.rq.CNY.JPY, se = "boot")
+CNY.JPY.summary
+plot(CNY.JPY.summary)
 ```
+
+Here is the quantile regression part of the package.
+	
+1. We set `taus` as the quantiles of interest.	
+2. We run the quantile regression using the `quantreg` package and a call to the `rq` function.	
+3. We can overlay the quantile regression results onto the standard linear model regression.	
+4. We can sensitize our analysis with the range of upper and lower bounds on the parameter estimates of the relationship between correlation and volatility.
+5. The log()-log() transformation allows us to interpret the regression coefficients as elasticities, which vary with the quantile. The larger the elasticity, especially if the absolute value is greater than one, the more risk dependence one market has on the other.
+6. The risk relationships can also be viewed year by year. Here we see very different patterns
+7. $y = a + bx + e$ is interpreted as systematic movements in $y = a + bx$, while unsystematic movements are simply $e$.
+ 	
+### Animation
+
+```{r}
+library(quantreg)
+library(magick)
+
+img <- image_graph(res = 96)
+datalist <- split(r_corr_vol, r_corr_vol$year)
+out <- lapply(datalist, function(data){
+  p <- ggplot(data, aes(JPY.vol, CNY.JPY)) +
+    geom_point() + 
+    ggtitle(data$year) + 
+    geom_quantile(quantiles = c(0.05, 0.95)) + 
+    geom_quantile(quantiles = 0.5, linetype = "longdash") +
+    geom_density_2d(colour = "red")  
+  print(p)
+})
+while (!is.null(dev.list()))  dev.off()
+#img <- image_background(image_trim(img), 'white')
+animation <- image_animate(img, fps = .5)
+animation	
+```
+	
+Attempt interpretations to help managers understand the way market interactions affect accounts receivables.
+
+## Notes on lead and lag
+
+In the `ccf()` function we get results that produce positive and negative lags. A positive lag looks back and a negative lag (a lead) looks forward in the history of a time series. Leading and lagging two different serries, then computing the moments and corelations show a definite asymmetry.
+
+Suppose we lead the USD.EUR return by 5 days and lag the USD.GBP by 5 days. We will compare the correlation in this case with the opposite: lead the USD.GBP return by 5 days and lag the USD.EUR by 5 days.  We will use the `dplyr` package to help us.
+
+```{r}
+library(dplyr)
+x <- as.numeric(exrates.df$returns.USD.EUR) # USD.EUR
+y <- as.numeric(exrates.df$returns.USD.GBP) # USD.GBP
+xy.df <- na.omit(data.frame(date = dates, ahead_x= lead(x, 5), behind_y = lag(y, 5)))
+yx.df <- na.omit(data.frame(date = dates, ahead_y =lead(y, 5), behind_x = lag(x, 5)))
+answer <- data_moments(na.omit(as.matrix(xy.df[,2:3])))
+answer <- round(answer, 4)
+knitr::kable(answer)
+answer <- data_moments(na.omit(as.matrix(yx.df[,2:3])))
+answer <- round(answer, 4)
+knitr::kable(answer)
+cor(as.numeric(xy.df$ahead_x), as.numeric(xy.df$behind_y))
+cor(as.numeric(yx.df$ahead_y), as.numeric(yx.df$behind_x))
+```
+
+Leading x, lagging y will produce a negative correlation. The opposite produces an even smaller and positive correlation. Differences in means, etc. are not huge between the two cases, but when combined produce the correlational differences.
+
 
 
 ## Conclusion
 
 ### Skills and Tools
-The main tools implemented for this report include RStudio, with associated built-in functions, as well as the following additional packages:
-
-* `ggplot2`
-* `gridExtra`
-* `dplyr`
-* `xtable`
-* `MASS`
-* `tseries`
-* `stats`
-
-Since timeseries data on "New York Harbor No. 2" (HO2) oil prices was used, the ability to interpret stationarity, as well as autocorrelation and partial autocorrelation was required. Standard plotting techniques using `ggplot2`, followed by the "dickey-fuller" test, via the `tseries` package, help determine whether data transformations were required. In this assignment, the `log` transformation followed by a difference of 1-step was implemented on the data. Having the data properly transformed, allowed the use of pivot tables from the `dplyr` package. Particular aspects were highlighted, and related to real world events. Additionally, a number of steps were taken to generate a gamma distribution. As later explained in the "Business Remarks" (below), the ability to translate properties of the gamma distribution, including `shape`, and `size` allowed an explanation regarding key properites for the given data distribution.
+:
+(REPLACE text here)
+What skills contributed towards data exploration and anaytics?
+:
 
 ### Data Insights
-A csv dataset containing prices for the "New York Harbor No. 2" (HO2) oil prices was analyzed for volatility, and associated earnings. The corresponding data was a two column dataset containing the `DATE`, as well as the `DHOILNYH` oil price. Simple computations were performed, in order to obtain the required dataframe structure:
-
-```{r}
-return = HO2$DHOILNYH
-size = abs(return)
-direction = ifelse(return > 0, "up", ifelse(return < 0, "down", "same"))
-date = as.Date(HO2$DATE, "%m/%d/%Y")
-price = as.numeric(HO2$DHOILNYH)
-
-HO2.df = na.omit(data.frame(
-    date = date,
-    price = price,
-    return = return,
-    size = size,
-    direction = direction
-))
-```
-
-The first two columns of the `HO2.df` dataframe are self-evident, while the `return` is the original oil price, corresponding to the `DHOILNYH` column. The `size` was the absolute value of the oil price, which indicates the volatility of the price. A plot was easily generated:
-
-```{r echo = TRUE, eval = TRUE}
-library(ggplot2)
-library(gridExtra)
-ggplot(HO2.df, aes(x = date, y = return, group = 1)) +
-    geom_line(colour = "blue") +
-    ggtitle('Standard Plot: 1st element removed')
-```
-
-It is evident that the corresponding data doesn't exhibit any noticeable patterns. Specifically, the mean, variance, and autocorrelation is not constant over time. However, to prove non-stationarity, the dickey-fuller test was applied to the `HO2.df$price`:
-
-```{r}
-library(tseries)
-adf.test(HO2.df$price)
-```
-
-Since the `p-value = 0.5126`, we fail to reject the null hypothesis, and conclude the given data is not stationary. To better prepare the data for analysis, some tranformation was required. Specifically, the `log` function was applied to the oil price, then the `diff` was aplied with the default `lag=1` and `difference=1`.
-
-
-```{r}
-return1 = as.numeric(diff(log(HO2$DHOILNYH)), 2)
-size1 = as.numeric(abs(return1)) # size is indicator of volatility
-direction1 = ifelse(return1 > 0, "up", ifelse(return1 < 0, "down", "same"))
-date1 = as.Date(HO2$DATE[-1], "%m/%d/%Y")
-price1 = as.numeric(diff(log(HO2$DHOILNYH)))
-HO2.df1 = na.omit(data.frame(
-    date = date1,
-    price = price1,
-    return = return1,
-    size = size1,
-    direction = direction1
-))
-```
-
-The same dickey-fuller test was executed on the adjusted dataset:
-
-```{r}
-adf.test(HO2.df1$price)
-```
-
-Results indicate a `p-value=0.01`, which indicates the null hypothesis can be rejected. Specifically, the tranformed data is assumed to be stationary. Furthermore, autocorrelation seems very minor at `lag=4`, then a complete decay. Additionally, small partial-autocorrelation seem to exist with decaying characteristics.
-
-```{r}
-require(stats)
-par(mar=c(1,1,1,1))
-acf(HO2.df1$return)
-pacf(HO2.df1$return)
-```
-
-Overall, the transformed data indicate appropriate properties for time-series analysis.
-
-Some initial analysis on the `size`, and `return` indicate volatility in both measures. Specifically, early 1990's and 2000's exhibit significant volatility for `$DHOILNYH` oil price's, with some noticeable volatility around 1996. Corresponding `skewness=-1.4353`, and `kurtosis=38.2595` suggests a non-normal distribution, with a longer negative tail indicating greater occurence of negative `return`.
-
-```{r}
-boxplot(
-    as.vector(HO2.df1$return),
-    title = FALSE,
-    main = "HO2 Returns",
-    col = "blue",
-    cex = 0.5,
-    pch = 10
-)
-```
-
-Based on earlier generated visualization, both the `size`, and `return` have the same pattern, with a general difference of scale. The `return` has much smaller values ranging from 0 to 5, while `size` has a range of roughly 15, with volatility values spiking between 40-50.
-
-Another price measure, include the price direction between timesteps (n, n+1). In the case for `$DHOILNYH`, oil price decreasing, or going "down", occurred 3657 times. Similarly, oil price increasing, or going "up", occurred 3760 times, while no change (i.e. "same") occured 279 times.
-
-To better summarize the above for all possible cases:
-
-```{r}
-table(HO2.df1$return < 0)
-table(HO2.df1$return > 0)
-table(HO2.df1$direction)
-table(HO2.df1$return == 0)
-```
-
-The above summary seem equally dispersed, when accounting only for directional changes. Specifically, the difference between `TRUE`, or `FALSE` for each given case is not significantly different. However, this uniformity may be a result of the implemented transformation. Earlier generated pivot table help visualize the overall distribution in a more concise fashion:
-
-```
-direction	return.avg	return.sd	quantile.5	quantile.95	percent
-down	-1.77	1.99	-4.78	-0.19	47.52
-same	0.00	0.00	0.00	0.00	3.63
-up	1.76	1.75	0.18	4.82	48.86
-```
-
-Additionally, creating a cumulative distribution function for HO2 oil price, with a tolerance `0.95`, indicates that 95% of samples has a value adjusted `return` of `0.03595899` or less. The associated pivot table on the oil price:
-
-```
-direction	return.avg	return.sd	quantile.5	quantile.95	percent
-down	-1.77	1.99	-4.78	-0.19	47.52
-same	0.00	0.00	0.00	0.00	3.63
-up	1.76	1.75	0.18	4.82	48.86
-```
-
-Subsetting the HO2 dataset using only `HO2.data$direction == "up"` along with the `return` price, the `fitdistr` incidates a `shape=1.30753665`, with `rate=0.74299635`. These two parameters are related to the "erlang distribution". Similarly, subsetting the HO2 dataset using only `(-HO2.data[HO2.data$direction == "down"` along with the `return` price, the corresponding erlang distribution patterns were `shape=1.31056202`, with `rate=0.73969342`. Generating a plot for the latter two distributions can easily be accomplished (as performed above):
-
-```{r}
-x = rgamma(100, shape = fit.gamma.up$estimate[1], scale = 1/fit.gamma.up$estimate[2])
-den = density(x)
-dat = data.frame(x = den$x, y = den$y)
-
-# plot density as points
-ggplot(data = dat, aes(x = x, y = y)) +
-  geom_point(size = 3) +
-  theme_classic()
-```
-
-For mearningful interpretation, more attention may be required to reduce noise from the dataset.
-
-The original dataset indicated significant volatilty, with seasonal patterns, and nonstationarity. Specifically, spikes generally occurred during periods of war:
-
-* 1990's: gulf war
-* 2000's: aftermath of 9/11
-* 2003-2011: war on Iraq
-
-To restructure the dataset for timeseries analysis, the `log` function was applied, followed by a one step difference. Using the "dicker-fuller" test confirmed the latter produced a stationary distribution. Corresponding ACF suggests a moving average `q=3`, while the partial ACF indicates a autoregressive `p=5`. 
-
-An `ARIMA` model was computed for the `return` value of `HO2`. Forecasting 30 steps into the future:
-
-```{r}
-library('forecast')
-library('tseries')
-
-fit = arima(HO2.df1$return, order=c(5, 0, 3))
-fcast = forecast(fit, h=30)
-plot(fcast)
-```
+:
+(REPLACE text here)
+Explain some of the data exploration, statistics and graphs here - include moments.
+:
 
 ### Business Remarks
-
-The earlier calculated gamma distribution, was predicated on a random gamma distribution based on the `size` and `return` parameters. Since this computation does not directly provide means for prediction, the ARIMA model was chosen for timeseries modeling and prediction. However, without properly spliting the dataset into a train and test set, no statistical measure could indicate the accuracy of the model.
-
-Determining a mechanism for measuring the test set, could involve defining a tolerance level (p=0.05). Specifically, if the predicted values were within the accepted tolerance, the prediction would be considered correct. Since no test set was utilized, forecasted `return` values can only be accepted at face value. Additionally, since predictions were performed on an adjusted dataset, an inverse log could rescale `return` value(s) to the original units.
-
-The following options may reduce the variable costs associated with producing several products:
-
-* set up contracts to set future prices
-* buy raw material in bulk to supply a longer period of time
-* establish an aggregated demand profile for H02
-* find H02 substitutes
-* (re)design product that do not need H02
-
-Periodicity of particular events, resulting in increase of oil prices, can be mitigated by some of the above options. Specifically, when oil supply runs low, either due to war, or socio-political event(s), having stop measures can reduce temporal volatility.
+:
+(REPLACE text here)
+Attempt interpretations to help managers understand the way market interactions affect accounts receivables.
+Can you tell what happens to Chinese customers when USD value climbs? 

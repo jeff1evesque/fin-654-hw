@@ -213,11 +213,11 @@ ggplotly(p)
 
 ```{r}
 one <- ts(exrates.df$returns.USD.EUR)
-two <- ts(exrates.df$returns.USD.GBP)
+two <- ts(exrates.df$returns.USD.JPY)
 # or
 one <- ts(exrates.zr[,1])
 two <- ts(exrates.zr[,2])
-ccf(abs(one), abs(two), main = "GBP vs. EUR", lag.max = 20, xlab = "", ylab = "", ci.col = "red")
+ccf(abs(one), abs(two), main = "EUR vs JPY", lag.max = 20, xlab = "", ylab = "", ci.col = "red")
 # build function to repeat these routines
 run_ccf <- function(one, two, main = "one vs. two", lag = 20, color = "red"){
   # one and two are equal length series
@@ -301,21 +301,15 @@ Here is the quantile regression part of the package.
 library(quantreg)
 library(magick)
 
-img <- image_graph(res = 96)
 datalist <- split(r_corr_vol, r_corr_vol$year)
-out <- lapply(datalist, function(data){
+lapply(datalist, function(data) {
   p <- ggplot(data, aes(JPY.vol, CNY.JPY)) +
     geom_point() + 
     ggtitle(data$year) + 
     geom_quantile(quantiles = c(0.05, 0.95)) + 
     geom_quantile(quantiles = 0.5, linetype = "longdash") +
-    geom_density_2d(colour = "red")  
-  print(p)
+    geom_density_2d(colour = "red")
 })
-while (!is.null(dev.list()))  dev.off()
-#img <- image_background(image_trim(img), 'white')
-animation <- image_animate(img, fps = .5)
-animation	
 ```
 	
 Attempt interpretations to help managers understand the way market interactions affect accounts receivables.
@@ -441,12 +435,15 @@ knitr::kable(answer)
 
 As noted earlier, more variance is present between USD.JPY, USD.EUR, and USD.GBP. Additionally, USD.CNY, and USD.GBP has the greatest kurtosis values. This means there are more frequent occuring data points near the tails of the corresponding distribution. Furthermore, USD.GBP has a high standard deviation, and high kurtosis. This indicates investment opportunities are too variable, with significant outliers accounting for high risk (i.e. kurtosis). The best conservative investment is likely USD.EUR, since it has the second smallest kurtosis (by a small margin), while the second smallest standard deviation. The best aggressive investment is likely to be USD.CNY, since it has the highest kurtosis with skewness, while having the smallest standard deviation.
 
+Additionally, multiple rolling correlations were conducted:
 
+- GBP and JPY
+- EUR and GBP
+- EUR and GBP: volatility
 
-:
-(REPLACE text here)
-Explain some of the data exploration, statistics and graphs here - include moments.
-:
+Results indicate correlation largely exists between the dimensions within a 95% confidence. However, each of the plots portray three signals extending beyond the confidence bands. These instances reoccur between the different plots, suggests a potential global event, having a similar globular influence in the market. However, before investigating the nature of a globalular event, a careful determination needs to assess whether the provided timeseries dataset is properly formatted.
+
+Finally, quantile regression was used to determine whether inter-market transactions can affect successive transactions in a given market. The `tau` parameter defines the desired quantile level.
 
 ### Business Remarks
 :

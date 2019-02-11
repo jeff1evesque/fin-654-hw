@@ -1,14 +1,16 @@
 ---
 title: 'Project #2: foreign exchange market interactions'
-subtitle: 'Live sessions: weeks 3 and 4'
 output:
-  word_document:
+  pdf_document:
     toc: yes
   html_document:
     keep_md: yes
     self_contained: no
     toc: yes
     toc_float: yes
+  word_document:
+    toc: yes
+subtitle: 'Live sessions: weeks 3 and 4'
 always_allow_html: yes
 ---
 
@@ -120,7 +122,7 @@ summary(exrates)
 
 - Using this data frame, interpret appreciation and depreciation in terms of the impact on the receipt of cash flow from customer's accounts that are denominated in other than our USD functional currency.
 
-```{r }
+```{r}
 # Compute log differences percent using as.matrix to force numeric type
 exrates.r <- diff(log(as.matrix(exrates[, -1]))) * 100
 head(exrates.r)
@@ -150,7 +152,7 @@ head(exrates.xts)
 
 We can plot with the `ggplot2` package. In the `ggplot` statements we use `aes`, "aesthetics", to pick `x` (horizontal) and `y` (vertical) axes. Use `group =1` to ensure that all data is plotted. The added (`+`) `geom_line` is the geometrical method that builds the line plot.
 
-```{r }
+```{r}
 library(ggplot2)
 library(plotly)
 title.chg <- "Exchange Rate Percent Changes"
@@ -161,7 +163,7 @@ ggplotly(p1)
 
 2. Let's dig deeper and compute mean, standard deviation, etc. Load the `data_moments()` function. Run the function using the `exrates` data and write a `knitr::kable()` report.
 
-```{r }
+```{r}
 acf(coredata(exrates.xts[ , 1:4])) # returns
 acf(coredata(exrates.xts[ , 5:8])) # sizes
 pacf(coredata(exrates.xts[ , 1:4])) # returns
@@ -251,7 +253,7 @@ run_ccf(one, two, main = title, lag = 20, color = "red")
 One more experiment, rolling correlations and volatilities using these functions:	
 
 ```{r}
-corr_rolling <- function(x) {	
+corr_rolling <- function(x) {
   dim <- ncol(x)	
   corr_r <- cor(x)[lower.tri(diag(dim), diag = FALSE)]	
   return(corr_r)	
@@ -302,14 +304,53 @@ library(quantreg)
 library(magick)
 
 datalist <- split(r_corr_vol, r_corr_vol$year)
+datalist = na.omit(datalist)
 lapply(datalist, function(data) {
-  p <- ggplot(data, aes(JPY.vol, CNY.JPY)) +
+  ggplot(data, aes(JPY.vol, CNY.JPY)) +
     geom_point() + 
     ggtitle(data$year) + 
     geom_quantile(quantiles = c(0.05, 0.95)) + 
     geom_quantile(quantiles = 0.5, linetype = "longdash") +
     geom_density_2d(colour = "red")
 })
+
+lapply(datalist, function(data) {
+  ggplot(data, aes(GBP.vol, EUR.GBP)) +
+    geom_point() + 
+    ggtitle(data$year) + 
+    geom_quantile(quantiles = c(0.05, 0.95)) + 
+    geom_quantile(quantiles = 0.5, linetype = "longdash") +
+    geom_density_2d(colour = "red")
+})
+
+lapply(datalist, function(data) {
+  ggplot(data, aes(GBP.vol, USD.GBP)) +
+    geom_point() + 
+    ggtitle(data$year) + 
+    geom_quantile(quantiles = c(0.05, 0.95)) + 
+    geom_quantile(quantiles = 0.5, linetype = "longdash") +
+    geom_density_2d(colour = "red")
+})
+
+lapply(datalist, function(data) {
+  ggplot(data, aes(CNY.vol, USD.CNY)) +
+    geom_point() + 
+    ggtitle(data$year) + 
+    geom_quantile(quantiles = c(0.05, 0.95)) + 
+    geom_quantile(quantiles = 0.5, linetype = "longdash") +
+    geom_density_2d(colour = "red")
+})
+
+lapply(datalist, function(data) {
+  ggplot(data, aes(USD, USD.CNY)) +
+    geom_point() + 
+    ggtitle(data$year) + 
+    geom_quantile(quantiles = c(0.05, 0.95)) + 
+    geom_quantile(quantiles = 0.5, linetype = "longdash") +
+    geom_density_2d(colour = "red")
+})
+
+View(datalist$`2013`)
 ```
 	
 Attempt interpretations to help managers understand the way market interactions affect accounts receivables.
@@ -338,8 +379,6 @@ cor(as.numeric(yx.df$ahead_y), as.numeric(yx.df$behind_x))
 
 Leading x, lagging y will produce a negative correlation. The opposite produces an even smaller and positive correlation. Differences in means, etc. are not huge between the two cases, but when combined produce the correlational differences.
 
-
-
 ## Conclusion
 
 ### Skills and Tools
@@ -354,6 +393,8 @@ The main tools implemented for this report include RStudio, along with additiona
 - quantreg
 - magick
 - dplyr
+
+The ability to interpret data moments, heteroscedasticity, autocorrelation, and partial autocorrelation are some essential components of the provided analysis.
 
 ### Data Insights
 
@@ -443,10 +484,25 @@ Additionally, multiple rolling correlations were conducted:
 
 Results indicate correlation largely exists between the dimensions within a 95% confidence. However, each of the plots portray three signals extending beyond the confidence bands. These instances reoccur between the different plots, suggests a potential global event, having a similar globular influence in the market. However, before investigating the nature of a globalular event, a careful determination needs to assess whether the provided timeseries dataset is properly formatted.
 
-Finally, quantile regression was used to determine whether inter-market transactions can affect successive transactions in a given market. The `tau` parameter defines the desired quantile level.
+An earlier cumulative distribution function, indicate the cutoff tolerance for EUR:
+
+```{r}
+one <- exrates.zr[,1]
+two <- exrates.zr[,2]
+title <- "EUR vs. GBP"
+run_ccf(abs(one), abs(two), main = title, lag = 20, color = "red")
+```
+
+Specifically, when defining a 95% tolerance risk, a corresponding 1.47% tolerable rate is returned. Therefore, the exposure of EUR would need to be decreased if the tolerable rate is exceeded.
+
+Next, quantile regression was used to determine whether inter-market transactions can affect successive transactions in a given market. The `tau` parameter was used to define the desired quantile level. At each quantile, the coefficients were assessed using a significance measure `Pr(>|t|)`.
+
+Finally, the relationship between CNY.JPN and JPY.vol indicate heteroscedasticity. More specifically, the variability between the volume of JPN varies unequally with CNY.JPN. This behavior is present from 2013 through 2017. Similarly, the comparison between the volume of GBP and EUR.GBP exhibit the same pattern. It is important to note, that both cases exhibit a clumping of data points. Specifically, points with the heteroscedastic plots, generally tend aggregate closer to one another.
 
 ### Business Remarks
-:
-(REPLACE text here)
-Attempt interpretations to help managers understand the way market interactions affect accounts receivables.
-Can you tell what happens to Chinese customers when USD value climbs? 
+
+In general the appreciation or depreciation of the USD will impact cashflow. When a foreign customer purchases goods in a country, during a period of currency appreciation, cash flow to the sellers country will be less than the current value. This occurs since the buyers currency has depreciated against the USD. However, if the appreciation has been accounted, Chinese customers will seek goods, services or trade from another country. Higher trading costs, may decrease US exports and US demand, causing an increase in supply. Sometimes this becomes a cyclic pattern. However, this simplification does not account for the many other factors that contribute to the overall influence.
+
+In this study, the distribution of data provides the ability to characterize exchange rates between `EUR`, `GBP`, `CNY`, `JPN` with the `USD`. Using comparative analysis between data moment, the best conservative investment could be argued in favor of `USD.EUR`. The amount of risk due to outliers is limited, while also having a relatively small standard deviation. When generating a corresponding confidence interval, more confidence can be provided for a smaller margin. Similarly, `USD.CNY` is likely the best aggressive investment. It is subject to a skewed distribution with a greater tendency of outliers occuring. However, the associated standard deviation is very small, while potentially being error prone due to the skew distribution. Though the smaller standard deviation, and margin is desired, when an undesirable outcome occurs, the risk can be quite high.
+
+Additionally, multiple quantile regression between `volumes` with the corresponding exchange rate from differing countries, shows heteroscedastic tendency. This means as the volumes increase for a given country, the corresponding exchange rate in a different country has greater variability. In the case between China and the United States, not all years were heteroscedastic. In general, as the Chinese volume increases, the corresponding exchange rate in the United States also increased. This behavior was prevalent between 2013 through 2016. In 2017, only three data points exhibited an overall negative heteroscedastic behavior. With incomplete 2017 data, this specific year should be ignored, unless a rolling regression model is created to predict successive values within the year. Furthermore, between 2014 and 2015, the heteroscedastic data points exhibited heavy clumping. Specifically, points tended to cluster between the lower, as well as the higher Chinese volumes. In 2016, points were more dispersed, while the overall pattern exhibited no heteroscedascity. Thus, it would be interesting to see a complete dataset for the years 2017-2018, then attempt to build an ARIMA model.

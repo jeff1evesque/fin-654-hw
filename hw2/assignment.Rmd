@@ -3,13 +3,13 @@ title: 'Project #2: foreign exchange market interactions'
 output:
   pdf_document:
     toc: yes
+  word_document:
+    toc: yes
   html_document:
     keep_md: yes
     self_contained: no
     toc: yes
     toc_float: yes
-  word_document:
-    toc: yes
 subtitle: 'Live sessions: weeks 3 and 4'
 always_allow_html: yes
 ---
@@ -340,17 +340,6 @@ lapply(datalist, function(data) {
     geom_quantile(quantiles = 0.5, linetype = "longdash") +
     geom_density_2d(colour = "red")
 })
-
-lapply(datalist, function(data) {
-  ggplot(data, aes(USD, USD.CNY)) +
-    geom_point() + 
-    ggtitle(data$year) + 
-    geom_quantile(quantiles = c(0.05, 0.95)) + 
-    geom_quantile(quantiles = 0.5, linetype = "longdash") +
-    geom_density_2d(colour = "red")
-})
-
-View(datalist$`2013`)
 ```
 	
 Attempt interpretations to help managers understand the way market interactions affect accounts receivables.

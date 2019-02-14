@@ -3,13 +3,13 @@ title: 'Project #2: foreign exchange market interactions'
 output:
   pdf_document:
     toc: yes
-  word_document:
-    toc: yes
   html_document:
     keep_md: yes
     self_contained: no
     toc: yes
     toc_float: yes
+  word_document:
+    toc: yes
 subtitle: 'Live sessions: weeks 3 and 4'
 always_allow_html: yes
 ---

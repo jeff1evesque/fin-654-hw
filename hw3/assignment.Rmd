@@ -31,6 +31,9 @@ knitr::knit_hooks$set(mysize = function(before, options, envir) {
   if (before) 
     return(options$size)
 })
+
+options(repos=c(CRAN="http://archive.linux.duke.edu/cran/"))
+install.packages(c('flexdashboard'))
 ```
 
 ## Purpose, Process, Product

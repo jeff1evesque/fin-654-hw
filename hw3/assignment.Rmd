@@ -25,7 +25,6 @@ install.packages(c('flexdashboard'))
 ```
 
 ```{r, include=FALSE}
-## import packages
 library(ggplot2)
 library(flexdashboard)
 library(shiny)
@@ -163,58 +162,10 @@ ni.cu.summary = summary(fit.rq.nickel.copper, se = "boot")
 title.chg = "Metals Market Percent Changes"
 ```
 
-Returns
-=====================================
-
-Column {data-width=500}
--------------------------------------
-    
-### ACF Returns
-    
-```{r, echo=FALSE}
-acf(coredata(data.xts[,1:3])) # returns
-```
-   
-Column {data-width=500}
--------------------------------------
-   
-### Autoplot Return
-
-```{r, echo=FALSE}
-autoplot.zoo(data.xts[,1:3]) + ggtitle(title.chg) + ylim(-5, 5)
-```
-
-Sizes
-=====================================  
-    
-Column {data-width=500}
--------------------------------------
-    
-### ACF Sizes
-    
-```{r, echo=FALSE}
-acf(coredata(data.xts[,4:6])) # sizes
-```
-   
-Column {data-width=500}
--------------------------------------
-   
-### Autoplot Sizes
-    
-```{r, echo=FALSE}
-autoplot.zoo(data.xts[,4:6]) + ggtitle(title.chg) + ylim(-5, 5)
-```
-
-```{r}
+```{r , echo=FALSE}
 ## pacf here
 one = ts(data.df$returns.nickel)
 two = ts(data.df$returns.copper)
-
-# or
-one = ts(data.zr[,1])
-two = ts(data.zr[,2])
-title.chg = "Nickel vs. Copper"
-ccf(one, two, main = title.chg, lag.max = 20, xlab = "", ylab = "", ci.col = "red")
 
 ## build function to repeat these routines
 run_ccf = function(one, two, main = title.chg, lag = 20, color = "red"){
@@ -230,15 +181,6 @@ run_ccf = function(one, two, main = title.chg, lag = 20, color = "red"){
   color = color
   ccf(one, two, main = main, lag.max = lag, xlab = "", ylab = "", ci.col = color)
 }
-
-title = "nickel-copper"
-run_ccf(one, two, main = title, lag = 20, color = "red")
-
-## volatility (sizes)
-one = abs(data.zr[,1])
-two = abs(data.zr[,2])
-title = "Nickel-Copper: volatility"
-run_ccf(one, two, main = title, lag = 20, color = "red")
 
 ##
 ## Load the data_moments() function
@@ -269,10 +211,9 @@ data_moments = function(data) {
 ## Run data_moments()
 answer = data_moments(data.xts[, 5:8])
 
-## Build pretty table
-answer = round(answer, 4)
-knitr::kable(answer)
-mean(data.xts[,4])
+alpha = 0.95
+
+## returns 1
 returns1 = returns[,1]
 colnames(returns1) = "Returns" #kluge to coerce column name for df
 returns1.df = data.frame(
@@ -280,46 +221,371 @@ returns1.df = data.frame(
     Distribution = rep("Historical", each = length(returns1))
 )
   
-alpha = 0.95
-  
 ## Value at Risk
-VaR.hist = quantile(returns1,alpha)
-VaR.text = paste("Value at Risk =", round(VaR.hist, 2))
-  
+VaR1.hist = quantile(returns1,alpha)
+VaR1.text = paste("Value at Risk =", round(VaR1.hist, 2))
+
 ## Determine the max y value of the desity plot.
 ## This will be used to place the text above the plot
-VaR.y = max(density(returns1.df$Returns)$y)
-  
+VaR1.y = max(density(returns1.df$Returns)$y)
+
 # Expected Shortfall
-ES.hist = median(returns1[returns1 > VaR.hist])
-ES.text = paste("Expected Shortfall =", round(ES.hist, 2))
+ES1.hist = median(returns1[returns1 > VaR1.hist])
+ES1.text = paste("Expected Shortfall =", round(ES1.hist, 2))
+
+## returns 2
+returns2 = returns[,2]
+colnames(returns2) = "Returns" #kluge to coerce column name for df
+returns2.df = data.frame(
+    Returns = returns2[,1],
+    Distribution = rep("Historical", each = length(returns2))
+)
+
+## Value at Risk
+VaR2.hist = quantile(returns2,alpha)
+VaR2.text = paste("Value at Risk =", round(VaR2.hist, 2))
+
+## Determine the max y value of the desity plot.
+## This will be used to place the text above the plot
+VaR2.y = max(density(returns2.df$Returns)$y)
+
+# Expected Shortfall
+ES2.hist = median(returns1[returns2 > VaR2.hist])
+ES2.text = paste("Expected Shortfall =", round(ES2.hist, 2))
+
+## returns 3
+returns3 = returns[,3]
+colnames(returns3) = "Returns" #kluge to coerce column name for df
+returns3.df = data.frame(
+    Returns = returns3[,1],
+    Distribution = rep("Historical", each = length(returns3))
+)
+  
+## Value at Risk
+VaR3.hist = quantile(returns3,alpha)
+VaR3.text = paste("Value at Risk =", round(VaR3.hist, 2))
+
+## Determine the max y value of the desity plot.
+## This will be used to place the text above the plot
+VaR3.y = max(density(returns3.df$Returns)$y)
+
+# Expected Shortfall
+ES3.hist = median(returns1[returns3 > VaR3.hist])
+ES3.text = paste("Expected Shortfall =", round(ES3.hist, 2))
 ```
 
-Page 2
+# Metal
+
+## Column {data-width=600}
+
+### Returns
+
+#### Nickel {.tabset}
+
+```{r, echo=FALSE}
+ggplot(
+    returns1.df,
+    aes(x = Returns, fill = Distribution)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(aes(xintercept = VaR1.hist), linetype = "dashed", size = 1, color = "firebrick1") +
+    geom_vline(aes(xintercept = ES1.hist), size = 1, color = "firebrick1") +
+    annotate("text", x = 2+ VaR1.hist, y = VaR1.y*1.05, label = VaR1.text) +
+    annotate("text", x = 1.5+ ES1.hist, y = VaR1.y*1.1, label = ES1.text) +
+    scale_fill_manual( values = "dodgerblue4")
+```
+
+#### Copper {.tabset}
+
+```{r, echo=FALSE}
+ggplot(
+    returns2.df,
+    aes(x = Returns, fill = Distribution)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(aes(xintercept = VaR2.hist), linetype = "dashed", size = 1, color = "firebrick1") +
+    geom_vline(aes(xintercept = ES2.hist), size = 1, color = "firebrick1") +
+    annotate("text", x = 2+ VaR2.hist, y = VaR1.y*1.05, label = VaR2.text) +
+    annotate("text", x = 1.5+ ES2.hist, y = VaR1.y*1.1, label = ES2.text) +
+    scale_fill_manual( values = "dodgerblue4")
+```
+
+#### Aluminum {.tabset}
+
+```{r, echo=FALSE}
+ggplot(
+    returns3.df,
+    aes(x = Returns, fill = Distribution)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(aes(xintercept = VaR3.hist), linetype = "dashed", size = 1, color = "firebrick1") +
+    geom_vline(aes(xintercept = ES3.hist), size = 1, color = "firebrick1") +
+    annotate("text", x = 2+ VaR3.hist, y = VaR1.y*1.05, label = VaR3.text) +
+    annotate("text", x = 1.5+ ES3.hist, y = VaR3.y*1.1, label = ES3.text) +
+    scale_fill_manual( values = "dodgerblue4")
+```
+
+## Column {data-width=600}
+
+### Sizes
+
+#### CCF {.tabset }
+
+```{r, echo=FALSE}
+one = ts(data.zr[,2])
+two = ts(data.zr[,3])
+title = "Copper vs. Aluminum"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+#### Volatility {.tabset }
+
+```{r, echo=FALSE}
+one = abs(data.zr[,2])
+two = abs(data.zr[,3])
+title = "Copper vs. Aluminum"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+#### CCF {.tabset }
+
+```{r, echo=FALSE}
+one = ts(data.zr[,1])
+two = ts(data.zr[,2])
+title = "Nickel vs. Copper"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+#### Volatility {.tabset }
+
+```{r, echo=FALSE}
+one = abs(data.zr[,1])
+two = abs(data.zr[,2])
+title = "Nickel vs. Copper"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+#### CCF {.tabset }
+
+```{r, echo=FALSE}
+one = ts(data.zr[,1])
+two = ts(data.zr[,3])
+title = "Nickel vs. Aluminum"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+#### Volatility {.tabset }
+
+```{r, echo=FALSE}
+one = abs(data.zr[,1])
+two = abs(data.zr[,3])
+title = "Nickel vs. Aluminum"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+# Returns & Sizes
+
+## Column {data-width=600}
+
+### Auto Correlation Function
+
+#### Returns {.tabset}
+
+```{r, echo=FALSE}
+acf(coredata(data.xts[,1:3]))
+```
+
+#### Sizes {.tabset}
+
+```{r, echo=FALSE}
+acf(coredata(data.xts[,4:6])) # sizes
+```
+
+## Column {data-width=600}
+
+### Autoplot
+
+#### Returns {.tabset}
+
+```{r, echo=FALSE}
+autoplot.zoo(data.xts[,1:3]) + ggtitle(title.chg) + ylim(-5, 5)
+```
+
+#### Sizes {.tabset}
+
+```{r, echo=FALSE}
+autoplot.zoo(data.xts[,4:6]) + ggtitle(title.chg) + ylim(-5, 5)
+```
+
+```{r, echo=FALSE}
+##
+## Now for Loss Analysis
+##
+
+price.last = as.numeric(tail(data[, -1], n=1))
+
+## Specify the positions
+position.rf = c(1/3, 1/3, 1/3)
+
+## And compute the position weights
+w = position.rf * price.last
+
+## Fan these  the length and breadth of the risk factor series
+weights.rf = matrix(w, nrow=nrow(data.r), ncol=ncol(data.r), byrow=TRUE)
+#head(rowSums((exp(data.r/100)-1)*weights.rf), n=3)
+
+## exp, we will either earn or lose from original dollar
+## We need to compute exp(x) - 1 for very small x: expm1 accomplishes this
+## head(rowSums((exp(data.r/100)-1)*weights.rf), n=4
+## weights.rf, is todays values
+## expm1(data.r/100) == (e^x) - 1 (m1 means -1, euler)
+## data.r/100 == x
+## data.r, is the return, which is normalized to compare against the dollar
+## e^x is the value tomorrow, taking the log brings us back to x
+
+loss.rf = -rowSums(expm1(data.r/100) * weights.rf)
+loss.rf.df = data.frame(Loss = loss.rf, Distribution = rep("Historical", each = length(loss.rf)))
+
+## trying to find good threshold
+##
+## exceedance line slices the curve
+
+## Simple Value at Risk and Expected Shortfall
+alpha.tolerance = .95
+VaR.hist = quantile(loss.rf, probs=alpha.tolerance, names=FALSE)
+
+## Just as simple Expected shortfall
+ES.hist = median(loss.rf[loss.rf > VaR.hist])
+VaR.text = paste("Value at Risk =\n", round(VaR.hist, 2)) # ="VaR"&c12
+ES.text = paste("Expected Shortfall \n=", round(ES.hist, 2))
+title.text = paste(round(alpha.tolerance*100, 0), "% Loss Limits")
+
+# mean excess plot to determine thresholds for extreme event management
+data = as.vector(loss.rf) # data is purely numeric
+umin =  min(data)         # threshold u min
+umax =  max(data) - 0.1   # threshold u max
+nint = 100                # grid length to generate mean excess plot
+grid.0 = numeric(nint)    # grid store
+e = grid.0                # store mean exceedances e
+upper = grid.0            # store upper confidence interval
+lower = grid.0            # store lower confidence interval
+u = seq(umin, umax, length = nint) # threshold u grid
+alpha = 0.95                  # confidence level
+for (i in 1:nint) {
+    data = data[data > u[i]]  # subset data above thresholds
+    e[i] = mean(data - u[i])  # calculate mean excess of threshold
+    sdev = sqrt(var(data))    # standard deviation
+    n = length(data)          # sample size of subsetted data above thresholds
+    upper[i] = e[i] + (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # upper confidence interval
+    lower[i] = e[i] - (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # lower confidence interval
+  }
+mep.df = data.frame(threshold = u, threshold.exceedances = e, lower = lower, upper = upper)
+loss.excess = loss.rf[loss.rf > u]
+
+##
+# GPD to describe and analyze the extremes
+#
+#library(QRM)
+alpha.tolerance = 0.95
+u = quantile(loss.rf, alpha.tolerance , names=FALSE)
+fit = fit.GPD(loss.rf, threshold=u) # Fit GPD to the excesses
+xi.hat = fit$par.ests[["xi"]] # fitted xi
+beta.hat = fit$par.ests[["beta"]] # fitted beta
+data = loss.rf
+n.relative.excess = length(loss.excess) / length(loss.rf) # = N_u/n
+VaR.gpd = u + (beta.hat/xi.hat)*(((1-alpha.tolerance) / n.relative.excess)^(-xi.hat)-1)
+ES.gpd = (VaR.gpd + beta.hat-xi.hat*u) / (1-xi.hat)
+n.relative.excess = length(loss.excess) / length(loss.rf) # = N_u/n
+VaR.gpd = u + (beta.hat/xi.hat)*(((1-alpha.tolerance) / n.relative.excess)^(-xi.hat)-1)
+ES.gpd = (VaR.gpd + beta.hat-xi.hat*u) / (1-xi.hat)
+
+# Plot away
+VaRgpd.text = paste("GPD: Value at Risk =", round(VaR.gpd, 2))
+ESgpd.text = paste("Expected Shortfall =", round(ES.gpd, 2))
+title.text = paste(VaRgpd.text, ESgpd.text, sep = " ")
+```
+
+Loss Analysis
 =====================================
-   
+
 Column {data-width=600}
 -------------------------------------
 
-### Chart 1
+### Barchart
 
 ```{r, echo=FALSE}
-ggplot(returns1.df, aes(x = Returns, fill = Distribution)) + geom_density(alpha = 0.5) + 
-    geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "firebrick1") + 
-    geom_vline(aes(xintercept = ES.hist), size = 1, color = "firebrick1") +
-    annotate("text", x = 2+ VaR.hist, y = VaR.y*1.05, label = VaR.text) +
-    annotate("text", x = 1.5+ ES.hist, y = VaR.y*1.1, label = ES.text) + scale_fill_manual( values = "dodgerblue4")
+ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) +
+  geom_histogram(alpha = 0.8) +
+  geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "blue") +
+  geom_vline(aes(xintercept = ES.hist), size = 1, color = "blue") +
+  annotate("text", x = VaR.hist, y = 40, label = VaR.text) +
+  annotate("text", x = ES.hist, y = 20, label = ES.text) + xlim(0, 500) +
+  ggtitle(title.text)
+```
+
+### Value at Risk: confidence
+
+```{r, echo=FALSE}
+showRM(fit, alpha = 0.99, RM = "VaR", method = "BFGS")
 ```
 
 Column {data-width=500}
 -------------------------------------
-   
-### Chart 2
 
-```{r}
-```   
-    
-### Chart 3
+### Loss
 
-```{r}
+```{r, echo=FALSE}
+ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_density(alpha = 0.2) +
+  geom_vline(aes(xintercept = VaR.gpd), colour = "blue", linetype = "dashed", size = 0.8) +
+  geom_vline(aes(xintercept = ES.gpd), colour = "blue", size = 0.8) +
+  annotate("text", x = 300, y = 0.005, label = ESgpd.text, colour = "blue") +
+  xlim(0,500) +
+  ggtitle(title.text)
+```
+
+### Expected Shorfall: confidence
+
+```{r, echo=FALSE}
+showRM(fit, alpha = 0.99, RM = "ES", method = "BFGS")
+```
+
+Final Remarks
+=====================================
+
+Column {data-width=600}
+-------------------------------------
+
+### Conclusions
+
+```
+Methods:
+
+- Flexdashboard
+- rq, quantile regression
+- as.zooreg, creates series-like object
+- autoplot.zoo, plotting for time-series
+- acf, autocorrelation
+
+Data Insights:
+
+Business Remarks:
+1.	How would the performance of these commodities affect the size and timing of shipping arrangements?
+
+2.	How would the value of new shipping arrangements affect the value of our business with our current customers?
+
+3.	How would we manage the allocation of existing resources given we have just landed in this new market?
+```
+
+Column {data-width=500}
+-------------------------------------
+
+### Volatility: Copper
+
+```{r, echo=FALSE}
+answer = round(answer, 4)
+knitr::kable(answer)
+mean(data.xts[,4])
+```
+
+### threshold
+
+```{r, echo=FALSE}
+ggplot(mep.df, aes( x= threshold, y = threshold.exceedances)) + geom_line() + geom_line(aes(x = threshold, y = lower), colour = "red") + geom_line(aes(x = threshold,  y = upper), colour = "red") + annotate("text", x = 400, y = 200, label = "upper 95%") + annotate("text", x = 200, y = 0, label = "lower 5%")
 ```

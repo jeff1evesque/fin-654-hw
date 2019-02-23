@@ -4,10 +4,6 @@ subtitle: 'Live Sessions: weeks 5 and 6'
 output: flexdashboard::flex_dashboard
 ---
 
-```{r}
-data = na.omit(read.csv("../data/metaldata.csv", header = TRUE))
-```
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, eval = TRUE, warning=FALSE, message=FALSE)
 knitr::opts_chunk$set(tidy = TRUE)
@@ -38,153 +34,284 @@ library(qrmdata)
 library(xts)
 library(zoo)
 library(psych)
+library(quantreg)
 
 ## analysis
 rm(list = ls())
 
-# PAGE: Exploratory Analysis
-data <- na.omit(read.csv("../data/metaldata.csv", header = TRUE))
-prices <- data
-# Compute log differences percent using as.matrix to force numeric type
-data.r <- diff(log(as.matrix(data[, -1]))) * 100
-# Create size and direction
-size <- na.omit(abs(data.r)) # size is indicator of volatility
-#head(size)
-colnames(size) <- paste(colnames(size),".size", sep = "") # Teetor
-direction <- ifelse(data.r > 0, 1, ifelse(data.r < 0, -1, 0)) # another indicator of volatility
-colnames(direction) <- paste(colnames(direction),".dir", sep = "")
-# Convert into a time series object: 
-# 1. Split into date and rates
-dates <- as.Date(data$DATE[-1], "%m/%d/%Y")
-dates.chr <- as.character(data$DATE[-1])
-#str(dates.chr)
-values <- cbind(data.r, size, direction)
-# for dplyr pivoting and ggplot2 need a data frame also known as "tidy data"
-data.df <- data.frame(dates = dates, returns = data.r, size = size, direction = direction)
-data.df.nd <- data.frame(dates = dates.chr, returns = data.r, size = size, direction = direction, stringsAsFactors = FALSE) 
-#non-coerced dates for subsetting on non-date columns
-# 2. Make an xts object with row names equal to the dates
-data.xts <- na.omit(as.xts(values, dates)) #order.by=as.Date(dates, "%d/%m/%Y")))
-#str(data.xts)
-data.zr <- as.zooreg(data.xts)
-returns <- data.xts # watch for this data below!
+## PAGE: Exploratory Analysis
+data = na.omit(read.csv("../data/metaldata.csv", header = TRUE))
+prices = data
 
-# PAGE: Market risk 
-corr_rolling <- function(x) {	
-  dim <- ncol(x)	
-  corr_r <- cor(x)[lower.tri(diag(dim), diag = FALSE)]	
+## Compute log differences percent using as.matrix to force numeric type
+data.r = diff(log(as.matrix(data[, -1]))) * 100
+
+##
+## create size and direction
+##
+## Note: size is indicator of volatility
+##
+size = na.omit(abs(data.r))
+
+colnames(size) = paste(colnames(size),".size", sep = "") # Teetor
+
+## another indicator of volatility
+direction = ifelse(data.r > 0, 1, ifelse(data.r < 0, -1, 0)) 
+colnames(direction) = paste(colnames(direction),".dir", sep = "")
+
+##
+## convert into a time series object: 
+##
+
+## 1. split into date and rates
+dates = as.Date(data$DATE[-1], "%m/%d/%Y")
+dates.chr = as.character(data$DATE[-1])
+
+values = cbind(data.r, size, direction)
+data.df = data.frame(
+  dates = dates,
+  returns = data.r,
+  size = size,
+  direction = direction
+)
+
+data.df.nd = data.frame(
+  dates = dates.chr,
+  returns = data.r,
+  size = size,
+  direction = direction,
+  stringsAsFactors = FALSE
+) 
+
+##
+## non-coerced dates for subsetting on non-date columns
+##
+
+## 2. xts object with row names equal to the dates
+data.xts = na.omit(as.xts(values, dates)) #order.by=as.Date(dates, "%d/%m/%Y")))
+data.zr = as.zooreg(data.xts)
+returns = data.xts
+
+##
+## PAGE: Market risk
+##
+corr_rolling = function(x) {	
+  dim = ncol(x)	
+  corr_r = cor(x)[lower.tri(diag(dim), diag = FALSE)]	
   return(corr_r)	
 }
-vol_rolling <- function(x){
+vol_rolling = function(x){
   library(matrixStats)
-  vol_r <- colSds(x)
+  vol_r = colSds(x)
   return(vol_r)
 }
-ALL.r <- data.xts[, 1:3]
-window <- 90 #reactive({input$window})
-corr_r <- rollapply(ALL.r, width = window, corr_rolling, align = "right", by.column = FALSE)
-colnames(corr_r) <- c("nickel.copper", "nickel.aluminium", "copper.aluminium")
-vol_r <- rollapply(ALL.r, width = window, vol_rolling, align = "right", by.column = FALSE)
-colnames(vol_r) <- c("nickel.vol", "copper.vol", "aluminium.vol")
-year <- format(index(corr_r), "%Y")
-r_corr_vol <- merge(ALL.r, corr_r, vol_r, year)
-# Market dependencies
+
+ALL.r = data.xts[, 1:3]
+window = 90 #reactive({input$window})
+corr_r = rollapply(
+  ALL.r,
+  width = window,
+  corr_rolling,
+  align = "right",
+  by.column = FALSE
+)
+colnames(corr_r) = c("nickel.copper", "nickel.aluminium", "copper.aluminium")
+vol_r = rollapply(
+  ALL.r,
+  width = window,
+  vol_rolling,
+  align = "right",
+  by.column = FALSE
+)
+colnames(vol_r) = c("nickel.vol", "copper.vol", "aluminium.vol")
+year = format(index(corr_r), "%Y")
+r_corr_vol = merge(ALL.r, corr_r, vol_r, year)
+
+##
+## Market dependencies
+##
+
 #library(matrixStats)
-R.corr <- apply.monthly(as.xts(ALL.r), FUN = cor)
-R.vols <- apply.monthly(ALL.r, FUN = colSds) # from MatrixStats	
-# Form correlation matrix for one month 	
-R.corr.1 <- matrix(R.corr[20,], nrow = 3, ncol = 3, byrow = FALSE)	
-rownames(R.corr.1) <- colnames(ALL.r[,1:3])	
-colnames(R.corr.1) <- rownames(R.corr.1)	
+R.corr = apply.monthly(as.xts(ALL.r), FUN = cor)
+R.vols = apply.monthly(ALL.r, FUN = colSds) # from MatrixStats	
+
+## Form correlation matrix for one month 	
+R.corr.1 = matrix(R.corr[20,], nrow = 3, ncol = 3, byrow = FALSE)	
+rownames(R.corr.1) = colnames(ALL.r[,1:3])	
+colnames(R.corr.1) = rownames(R.corr.1)	
 R.corr.1
-R.corr <- R.corr[, c(2, 3, 6)]
-colnames(R.corr) <- c("nickel.copper", "nickel.aluminium", "copper.aluminium") 	
-colnames(R.vols) <- c("nickel.vols", "copper.vols", "aluminium.vols")	
-R.corr.vols <- na.omit(merge(R.corr, R.vols))
-year <- format(index(R.corr.vols), "%Y")
-R.corr.vols.y <- data.frame(nickel.correlation = R.corr.vols[,1], copper.volatility = R.corr.vols[,5], year = year)
-nickel.vols <- as.numeric(R.corr.vols[,"nickel.vols"])	
-copper.vols <- as.numeric(R.corr.vols[,"copper.vols"])	
-aluminium.vols <- as.numeric(R.corr.vols[,"aluminium.vols"])
+R.corr = R.corr[, c(2, 3, 6)]
+colnames(R.corr) = c("nickel.copper", "nickel.aluminium", "copper.aluminium") 	
+colnames(R.vols) = c("nickel.vols", "copper.vols", "aluminium.vols")	
+R.corr.vols = na.omit(merge(R.corr, R.vols))
+year = format(index(R.corr.vols), "%Y")
+R.corr.vols.y = data.frame(
+  nickel.correlation = R.corr.vols[,1],
+  copper.volatility = R.corr.vols[,5],
+  year = year
+)
+nickel.vols = as.numeric(R.corr.vols[,"nickel.vols"])	
+copper.vols = as.numeric(R.corr.vols[,"copper.vols"])	
+aluminium.vols = as.numeric(R.corr.vols[,"aluminium.vols"])
 
-library(quantreg)
-taus <- seq(.05,.95,.05)	# Roger Koenker UI Bob Hogg and Allen Craig
-fit.rq.nickel.copper <- rq(log(nickel.copper) ~ log(copper.vol), tau = taus, data = r_corr_vol)	
-fit.lm.nickel.copper <- lm(log(nickel.copper) ~ log(copper.vol), data = r_corr_vol)	
-#' Some test statements	
-ni.cu.summary <- summary(fit.rq.nickel.copper, se = "boot")
-```
+## Roger Koenker UI Bob Hogg and Allen Craig
+taus = seq(.05,.95,.05)
+fit.rq.nickel.copper = rq(log(nickel.copper) ~ log(copper.vol), tau = taus, data = r_corr_vol)	
+fit.lm.nickel.copper = lm(log(nickel.copper) ~ log(copper.vol), data = r_corr_vol)	
+ni.cu.summary = summary(fit.rq.nickel.copper, se = "boot")
+
+title.chg = "Metals Market Percent Changes"
 ```
 
-Page 0 {data-orientation=rows}
+Returns
+=====================================
+
+Column {data-width=500}
+-------------------------------------
+    
+### ACF Returns
+    
+```{r, echo=FALSE}
+acf(coredata(data.xts[,1:3])) # returns
+```
+   
+Column {data-width=500}
+-------------------------------------
+   
+### Autoplot Return
+
+```{r, echo=FALSE}
+autoplot.zoo(data.xts[,1:3]) + ggtitle(title.chg) + ylim(-5, 5)
+```
+
+Sizes
 =====================================  
-
-Row {data-height=600}
--------------------------------------
-
-### Chart 1
-
-Row {data-height=600}
+    
+Column {data-width=500}
 -------------------------------------
     
-```{r}
-```
+### ACF Sizes
     
-### Chart 2
-
-Row {data-height=600}
--------------------------------------
-
-```{r}
+```{r, echo=FALSE}
+acf(coredata(data.xts[,4:6])) # sizes
 ```
-
-### Chart 3
-
-Row {data-height=400}
+   
+Column {data-width=500}
 -------------------------------------
-
-```{r}
-```
+   
+### Autoplot Sizes
     
+```{r, echo=FALSE}
+autoplot.zoo(data.xts[,4:6]) + ggtitle(title.chg) + ylim(-5, 5)
+```
+
+```{r}
+## pacf here
+one = ts(data.df$returns.nickel)
+two = ts(data.df$returns.copper)
+
+# or
+one = ts(data.zr[,1])
+two = ts(data.zr[,2])
+title.chg = "Nickel vs. Copper"
+ccf(one, two, main = title.chg, lag.max = 20, xlab = "", ylab = "", ci.col = "red")
+
+## build function to repeat these routines
+run_ccf = function(one, two, main = title.chg, lag = 20, color = "red"){
+  # one and two are equal length series
+  # main is title
+  # lag is number of lags in cross-correlation
+  # color is color of dashed confidence interval bounds
+  stopifnot(length(one) == length(two))
+  one = ts(one)
+  two = ts(two)
+  main = main
+  lag = lag
+  color = color
+  ccf(one, two, main = main, lag.max = lag, xlab = "", ylab = "", ci.col = color)
+}
+
+title = "nickel-copper"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+
+## volatility (sizes)
+one = abs(data.zr[,1])
+two = abs(data.zr[,2])
+title = "Nickel-Copper: volatility"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+
+##
+## Load the data_moments() function
+## data_moments function
+## INPUTS: r vector
+## OUTPUTS: list of scalars (mean, sd, median, skewness, kurtosis)
+##
+data_moments = function(data) {
+  library(moments)
+  library(matrixStats)
+  mean.r = colMeans(data)
+  median.r = colMedians(data)
+  sd.r = colSds(data)
+  IQR.r = colIQRs(data)
+  skewness.r = skewness(data)
+  kurtosis.r = kurtosis(data)
+  result = data.frame(
+    mean = mean.r,
+    median = median.r,
+    std_dev = sd.r,
+    IQR = IQR.r,
+    skewness = skewness.r,
+    kurtosis = kurtosis.r
+  )
+  return(result)
+}
+
+## Run data_moments()
+answer = data_moments(data.xts[, 5:8])
+
+## Build pretty table
+answer = round(answer, 4)
+knitr::kable(answer)
+mean(data.xts[,4])
+returns1 = returns[,1]
+colnames(returns1) = "Returns" #kluge to coerce column name for df
+returns1.df = data.frame(
+    Returns = returns1[,1],
+    Distribution = rep("Historical", each = length(returns1))
+)
+  
+alpha = 0.95
+  
+## Value at Risk
+VaR.hist = quantile(returns1,alpha)
+VaR.text = paste("Value at Risk =", round(VaR.hist, 2))
+  
+## Determine the max y value of the desity plot.
+## This will be used to place the text above the plot
+VaR.y = max(density(returns1.df$Returns)$y)
+  
+# Expected Shortfall
+ES.hist = median(returns1[returns1 > VaR.hist])
+ES.text = paste("Expected Shortfall =", round(ES.hist, 2))
+```
+
+Page 2
+=====================================
+   
 Column {data-width=600}
 -------------------------------------
 
-Page 1
-=====================================  
-    
-Column {data-width=600}
--------------------------------------
-    
-### Chart 1
-    
-```{r}
-```
-   
-Column {data-width=400}
--------------------------------------
-   
-### Chart 2
-
-```{r}
-```   
- 
-### Chart 3
-    
-```{r}
-```
-
-Page 2 {data-orientation=rows}
-=====================================     
-   
-Row {data-height=600}
--------------------------------------
-
 ### Chart 1
 
-```{r}
+```{r, echo=FALSE}
+ggplot(returns1.df, aes(x = Returns, fill = Distribution)) + geom_density(alpha = 0.5) + 
+    geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "firebrick1") + 
+    geom_vline(aes(xintercept = ES.hist), size = 1, color = "firebrick1") +
+    annotate("text", x = 2+ VaR.hist, y = VaR.y*1.05, label = VaR.text) +
+    annotate("text", x = 1.5+ ES.hist, y = VaR.y*1.1, label = ES.text) + scale_fill_manual( values = "dodgerblue4")
 ```
 
-Row {data-height=400}
+Column {data-width=500}
 -------------------------------------
    
 ### Chart 2

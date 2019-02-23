@@ -278,51 +278,12 @@ ES3.text = paste("Expected Shortfall =", round(ES3.hist, 2))
 
 ## Column {data-width=600}
 
-### Returns
-
-#### Nickel {.tabset}
+### Moments
 
 ```{r, echo=FALSE}
-ggplot(
-    returns1.df,
-    aes(x = Returns, fill = Distribution)) +
-    geom_density(alpha = 0.5) +
-    geom_vline(aes(xintercept = VaR1.hist), linetype = "dashed", size = 1, color = "firebrick1") +
-    geom_vline(aes(xintercept = ES1.hist), size = 1, color = "firebrick1") +
-    annotate("text", x = 2+ VaR1.hist, y = VaR1.y*1.05, label = VaR1.text) +
-    annotate("text", x = 1.5+ ES1.hist, y = VaR1.y*1.1, label = ES1.text) +
-    scale_fill_manual( values = "dodgerblue4")
+answer = round(answer, 4)
+knitr::kable(answer)
 ```
-
-#### Copper {.tabset}
-
-```{r, echo=FALSE}
-ggplot(
-    returns2.df,
-    aes(x = Returns, fill = Distribution)) +
-    geom_density(alpha = 0.5) +
-    geom_vline(aes(xintercept = VaR2.hist), linetype = "dashed", size = 1, color = "firebrick1") +
-    geom_vline(aes(xintercept = ES2.hist), size = 1, color = "firebrick1") +
-    annotate("text", x = 2+ VaR2.hist, y = VaR1.y*1.05, label = VaR2.text) +
-    annotate("text", x = 1.5+ ES2.hist, y = VaR1.y*1.1, label = ES2.text) +
-    scale_fill_manual( values = "dodgerblue4")
-```
-
-#### Aluminum {.tabset}
-
-```{r, echo=FALSE}
-ggplot(
-    returns3.df,
-    aes(x = Returns, fill = Distribution)) +
-    geom_density(alpha = 0.5) +
-    geom_vline(aes(xintercept = VaR3.hist), linetype = "dashed", size = 1, color = "firebrick1") +
-    geom_vline(aes(xintercept = ES3.hist), size = 1, color = "firebrick1") +
-    annotate("text", x = 2+ VaR3.hist, y = VaR1.y*1.05, label = VaR3.text) +
-    annotate("text", x = 1.5+ ES3.hist, y = VaR3.y*1.1, label = ES3.text) +
-    scale_fill_manual( values = "dodgerblue4")
-```
-
-## Column {data-width=600}
 
 ### Sizes
 
@@ -378,6 +339,52 @@ one = abs(data.zr[,1])
 two = abs(data.zr[,3])
 title = "Nickel vs. Aluminum"
 run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+## Column {data-width=600}
+
+### Returns
+
+#### Nickel {.tabset}
+
+```{r, echo=FALSE}
+ggplot(
+    returns1.df,
+    aes(x = Returns, fill = Distribution)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(aes(xintercept = VaR1.hist), linetype = "dashed", size = 1, color = "firebrick1") +
+    geom_vline(aes(xintercept = ES1.hist), size = 1, color = "firebrick1") +
+    annotate("text", x = 2+ VaR1.hist, y = VaR1.y*1.05, label = VaR1.text) +
+    annotate("text", x = 1.5+ ES1.hist, y = VaR1.y*1.1, label = ES1.text) +
+    scale_fill_manual( values = "dodgerblue4")
+```
+
+#### Copper {.tabset}
+
+```{r, echo=FALSE}
+ggplot(
+    returns2.df,
+    aes(x = Returns, fill = Distribution)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(aes(xintercept = VaR2.hist), linetype = "dashed", size = 1, color = "firebrick1") +
+    geom_vline(aes(xintercept = ES2.hist), size = 1, color = "firebrick1") +
+    annotate("text", x = 2+ VaR2.hist, y = VaR1.y*1.05, label = VaR2.text) +
+    annotate("text", x = 1.5+ ES2.hist, y = VaR1.y*1.1, label = ES2.text) +
+    scale_fill_manual( values = "dodgerblue4")
+```
+
+#### Aluminum {.tabset}
+
+```{r, echo=FALSE}
+ggplot(
+    returns3.df,
+    aes(x = Returns, fill = Distribution)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(aes(xintercept = VaR3.hist), linetype = "dashed", size = 1, color = "firebrick1") +
+    geom_vline(aes(xintercept = ES3.hist), size = 1, color = "firebrick1") +
+    annotate("text", x = 2+ VaR3.hist, y = VaR1.y*1.05, label = VaR3.text) +
+    annotate("text", x = 1.5+ ES3.hist, y = VaR3.y*1.1, label = ES3.text) +
+    scale_fill_manual( values = "dodgerblue4")
 ```
 
 # Returns & Sizes
@@ -502,13 +509,13 @@ ESgpd.text = paste("Expected Shortfall =", round(ES.gpd, 2))
 title.text = paste(VaRgpd.text, ESgpd.text, sep = " ")
 ```
 
-Loss Analysis
-=====================================
+# Loss Analysis
 
-Column {data-width=600}
--------------------------------------
+## Column {data-width=600}
 
-### Barchart
+### Loss
+
+#### Count {.tabset}
 
 ```{r, echo=FALSE}
 ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) +
@@ -520,16 +527,7 @@ ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) +
   ggtitle(title.text)
 ```
 
-### Value at Risk: confidence
-
-```{r, echo=FALSE}
-showRM(fit, alpha = 0.99, RM = "VaR", method = "BFGS")
-```
-
-Column {data-width=500}
--------------------------------------
-
-### Loss
+#### Density {.tabset}
 
 ```{r, echo=FALSE}
 ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_density(alpha = 0.2) +
@@ -540,17 +538,25 @@ ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_density(alpha = 0.
   ggtitle(title.text)
 ```
 
-### Expected Shorfall: confidence
+## Column {data-width=600}
+
+### Confidence
+
+#### Value at Risk {.tabset}
+
+```{r, echo=FALSE}
+showRM(fit, alpha = 0.99, RM = "VaR", method = "BFGS")
+```
+
+#### Expected Shorfall {.tabset}
 
 ```{r, echo=FALSE}
 showRM(fit, alpha = 0.99, RM = "ES", method = "BFGS")
 ```
 
-Final Remarks
-=====================================
+# Final Remarks
 
-Column {data-width=600}
--------------------------------------
+## Column {data-width=600}
 
 ### Conclusions
 
@@ -575,14 +581,6 @@ Business Remarks:
 
 Column {data-width=500}
 -------------------------------------
-
-### Volatility: Copper
-
-```{r, echo=FALSE}
-answer = round(answer, 4)
-knitr::kable(answer)
-mean(data.xts[,4])
-```
 
 ### threshold
 

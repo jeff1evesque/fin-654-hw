@@ -558,6 +558,8 @@ showRM(fit, alpha = 0.99, RM = "ES", method = "BFGS")
 ### Methods
 
 ```
+The following R utilities were used for the exploration and analysis in this study:
+
 - flexdashboard, creates HTML with row and colum formatting
 - rq, quantile regression
 - as.zooreg, creates series-like object

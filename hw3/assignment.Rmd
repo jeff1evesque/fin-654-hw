@@ -595,7 +595,11 @@ Performance can be measured by defining a Value at Risk (VaR), which defines the
 
 2. How would the value of new shipping arrangements affect the value of our business with our current customers?
 
+New shipping arrangements could pivot away companies from current customers to tramp trade, if shipment is more lucrative. This would hurt the current supply chain relationships.
+
 3. How would we manage the allocation of existing resources given we have just landed in this new market?
+
+Understanding the price sensitivity of the metals market (using the provided graphs), is an important requirement for accurate asset allotment. Furthermore, information such as VAR and ES, allows resources and budget to be properly distributed, with the intention to improves processes, without negative side-effects to existing business model(s). 
 ```
 
 ### Definitions

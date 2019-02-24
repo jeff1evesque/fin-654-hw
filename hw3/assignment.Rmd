@@ -231,7 +231,7 @@ VaR1.text = paste("Value at Risk =", round(VaR1.hist, 2))
 VaR1.y = max(density(returns1.df$Returns)$y)
 
 # Expected Shortfall
-ES1.hist = median(returns1[returns1 > VaR1.hist])
+ES1.hist = mean(returns1[returns1 > VaR1.hist])
 ES1.text = paste("Expected Shortfall =", round(ES1.hist, 2))
 
 ## returns 2
@@ -250,8 +250,8 @@ VaR2.text = paste("Value at Risk =", round(VaR2.hist, 2))
 ## This will be used to place the text above the plot
 VaR2.y = max(density(returns2.df$Returns)$y)
 
-# Expected Shortfall
-ES2.hist = median(returns1[returns2 > VaR2.hist])
+## Expected Shortfall
+ES2.hist = mean(returns1[returns2 > VaR2.hist])
 ES2.text = paste("Expected Shortfall =", round(ES2.hist, 2))
 
 ## returns 3
@@ -271,7 +271,7 @@ VaR3.text = paste("Value at Risk =", round(VaR3.hist, 2))
 VaR3.y = max(density(returns3.df$Returns)$y)
 
 # Expected Shortfall
-ES3.hist = median(returns1[returns3 > VaR3.hist])
+ES3.hist = mean(returns1[returns3 > VaR3.hist])
 ES3.text = paste("Expected Shortfall =", round(ES3.hist, 2))
 ```
 
@@ -457,7 +457,7 @@ alpha.tolerance = .95
 VaR.hist = quantile(loss.rf, probs=alpha.tolerance, names=FALSE)
 
 ## Just as simple Expected shortfall
-ES.hist = median(loss.rf[loss.rf > VaR.hist])
+ES.hist = mean(loss.rf[loss.rf > VaR.hist])
 VaR.text = paste("Value at Risk =\n", round(VaR.hist, 2)) # ="VaR"&c12
 ES.text = paste("Expected Shortfall \n=", round(ES.hist, 2))
 title.text = paste(round(alpha.tolerance*100, 0), "% Loss Limits")
@@ -499,9 +499,6 @@ data = loss.rf
 n.relative.excess = length(loss.excess) / length(loss.rf) # = N_u/n
 VaR.gpd = u + (beta.hat/xi.hat)*(((1-alpha.tolerance) / n.relative.excess)^(-xi.hat)-1)
 ES.gpd = (VaR.gpd + beta.hat-xi.hat*u) / (1-xi.hat)
-n.relative.excess = length(loss.excess) / length(loss.rf) # = N_u/n
-VaR.gpd = u + (beta.hat/xi.hat)*(((1-alpha.tolerance) / n.relative.excess)^(-xi.hat)-1)
-ES.gpd = (VaR.gpd + beta.hat-xi.hat*u) / (1-xi.hat)
 
 # Plot away
 VaRgpd.text = paste("GPD: Value at Risk =", round(VaR.gpd, 2))
@@ -522,14 +519,17 @@ ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) +
   geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "blue") +
   geom_vline(aes(xintercept = ES.hist), size = 1, color = "blue") +
   annotate("text", x = VaR.hist, y = 40, label = VaR.text) +
-  annotate("text", x = ES.hist, y = 20, label = ES.text) + xlim(0, 500) +
+  annotate("text", x = ES.hist, y = 20, label = ES.text) +
+    xlim(0, 500) +
   ggtitle(title.text)
 ```
 
 ### Density
 
 ```{r, echo=FALSE}
-ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_density(alpha = 0.2) +
+title.text = paste0('GPD: ', round(alpha.tolerance * 100, 0), "% Loss Limits")
+ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) +
+  geom_density(alpha = 0.2) +
   geom_vline(aes(xintercept = VaR.gpd), colour = "blue", linetype = "dashed", size = 0.8) +
   geom_vline(aes(xintercept = ES.gpd), colour = "blue", size = 0.8) +
   annotate("text", x = 300, y = 0.005, label = ESgpd.text, colour = "blue") +
@@ -539,7 +539,7 @@ ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_density(alpha = 0.
 
 ## Column {data-width=600 .tabset}
 
-### Value at Risk {.tabset}
+### Value at Risk
 
 ```{r, echo=FALSE}
 showRM(fit, alpha = 0.99, RM = "VaR", method = "BFGS")
@@ -553,14 +553,12 @@ showRM(fit, alpha = 0.99, RM = "ES", method = "BFGS")
 
 # Final Remarks
 
-## Column {data-width=600}
+## Column {data-width=600 .tabset}
 
-### Conclusions
+### Methods
 
 ```
-Methods:
-
-- Flexdashboard
+- flexdashboard
 - rq, quantile regression
 - as.zooreg, creates series-like object
 - autoplot.zoo, plotting for time-series
@@ -568,10 +566,29 @@ Methods:
 - expm1, computes the exponential of the given value minus one
 - showRM, plot estimated tail probabilities
 - ccf, measure similarity between two series
+```
 
-Data Insights:
+### Data Insights
 
-Business Remarks:
+```
+The strongest cross-correlation sequentially:
+
+- Nickel vs Copper: 7
+- Nickel vs Aluminum: 5
+- Copper vs Aluminum: 3
+
+Note: numbers to the right of the cross correlation, are suggestive lags for stationarity.
+
+The corresponding timeseries suggests most fluctuations with nickel, followed by copper (via `Size` timeseries), then aluminum. Since the value at risk (VaR) is the largest likely loss for a given portfolio, and nickel has greater expected shortfall (ES), this indicates a considerably risky investment.
+
+The overall loss limit exhibits an exponential tail. Without further proof whether the overall distribution is normal, suggests the use of ES over VaR. Furthermore, the general pareto distribution (GPD) provides better accuracy by relying less on the distribution central mode. Since calculations focuses directly on the exceedance, results will better fit the data subset.
+
+Using GPD, the expected shortfall computed at 450.9, more than double the original 194.46. This significant difference could be detrimental for an investment should the risk occur. Lastly, the "Estimated tail probabilities" indicates the GPD having greater variance for ES compared to VaR. As a follow-up, it would be interesting to determine whether the VaR is normal, and therefore applicable.
+```
+
+### Business Remarks
+
+```
 1. How would the performance of these commodities affect the size and timing of shipping arrangements?
 
 Performance can be measured by defining a Value at Risk (VaR), which defines the maximum expected loss with a given confidence. An associated expected shortfall (ES), is the average of all loses that exceed the VaR. Using previous ES against an accepted risk level, will ensure the right amount of commodities are produced. Specifically, an abundance of non-distributed commodities may overwhelm transportation means. Likewise, not maximizing the commodities for a given shipping location, corresponds to under-utilizing shipping resources. Therefore, VaR and ES would likely be incorporated as a series 'what if' scenarios, with varying commodities at different shipping location. Performance can be measured by an overall net sale, or net sale relative to shipped goods.
@@ -581,8 +598,24 @@ Performance can be measured by defining a Value at Risk (VaR), which defines the
 3. How would we manage the allocation of existing resources given we have just landed in this new market?
 ```
 
-Column {data-width=500}
--------------------------------------
+### Definitions
+
+```
+Risk Measure: four properties are generally required by a risk measure
+
+- monotonicity: if the investment portfolio generates higher returns than another investment, throughout the world, the investment has less risk.
+- translation invariance: if more money is added to the portfolio, the risk is reduced by that amount.
+- homogeneity: if the portfolio is increased by a factor, then the risk will increase by the same factor.
+- subadditivity: the sum of two combined portfolio will be less than the sum of the risk individually.
+
+It is important to note, all four cases are satisfied by ES. However, the fourth case fails for VaR when the distribution is non-normal.
+
+Source:
+
+- https://quantdare.com/value-at-risk-or-expected-shortfall/
+```
+
+## Column {data-width=600}
 
 ### threshold
 

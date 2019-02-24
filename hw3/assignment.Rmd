@@ -473,14 +473,16 @@ upper = grid.0            # store upper confidence interval
 lower = grid.0            # store lower confidence interval
 u = seq(umin, umax, length = nint) # threshold u grid
 alpha = 0.95                  # confidence level
+
 for (i in 1:nint) {
-    data = data[data > u[i]]  # subset data above thresholds
-    e[i] = mean(data - u[i])  # calculate mean excess of threshold
-    sdev = sqrt(var(data))    # standard deviation
-    n = length(data)          # sample size of subsetted data above thresholds
-    upper[i] = e[i] + (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # upper confidence interval
-    lower[i] = e[i] - (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # lower confidence interval
-  }
+  data = data[data > u[i]]  # subset data above thresholds
+  e[i] = mean(data - u[i])  # calculate mean excess of threshold
+  sdev = sqrt(var(data))    # standard deviation
+  n = length(data)          # sample size of subsetted data above thresholds
+  upper[i] = e[i] + (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # upper confidence interval
+  lower[i] = e[i] - (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # lower confidence interval
+}
+
 mep.df = data.frame(threshold = u, threshold.exceedances = e, lower = lower, upper = upper)
 loss.excess = loss.rf[loss.rf > u]
 
@@ -514,6 +516,7 @@ title.text = paste(VaRgpd.text, ESgpd.text, sep = " ")
 ### Count
 
 ```{r, echo=FALSE}
+title.text = paste0(round(alpha.tolerance * 100, 0), "% Loss Limits")
 ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) +
   geom_histogram(alpha = 0.8) +
   geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "blue") +
@@ -542,7 +545,7 @@ ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_density(alpha = 0.
 showRM(fit, alpha = 0.99, RM = "VaR", method = "BFGS")
 ```
 
-### Expected Shorfall
+### Expected Shortfall
 
 ```{r, echo=FALSE}
 showRM(fit, alpha = 0.99, RM = "ES", method = "BFGS")
@@ -562,15 +565,20 @@ Methods:
 - as.zooreg, creates series-like object
 - autoplot.zoo, plotting for time-series
 - acf, autocorrelation
+- expm1, computes the exponential of the given value minus one
+- showRM, plot estimated tail probabilities
+- ccf, measure similarity between two series
 
 Data Insights:
 
 Business Remarks:
-1.	How would the performance of these commodities affect the size and timing of shipping arrangements?
+1. How would the performance of these commodities affect the size and timing of shipping arrangements?
 
-2.	How would the value of new shipping arrangements affect the value of our business with our current customers?
+Performance can be measured by defining a Value at Risk (VaR), which defines the maximum expected loss with a given confidence. An associated expected shortfall (ES), is the average of all loses that exceed the VaR. Using previous ES against an accepted risk level, will ensure the right amount of commodities are produced. Specifically, an abundance of non-distributed commodities may overwhelm transportation means. Likewise, not maximizing the commodities for a given shipping location, corresponds to under-utilizing shipping resources. Therefore, VaR and ES would likely be incorporated as a series 'what if' scenarios, with varying commodities at different shipping location. Performance can be measured by an overall net sale, or net sale relative to shipped goods.
 
-3.	How would we manage the allocation of existing resources given we have just landed in this new market?
+2. How would the value of new shipping arrangements affect the value of our business with our current customers?
+
+3. How would we manage the allocation of existing resources given we have just landed in this new market?
 ```
 
 Column {data-width=500}

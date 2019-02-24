@@ -1,19 +1,7 @@
 ---
 title: 'Project #3: Escapades in Market Risk'
-output:
-  pdf_document:
-    toc: yes
-  html_document:
-    toc: yes
-    toc_float: yes
 subtitle: 'Live Sessions: weeks 5 and 6'
-header-includes:
-- \usepackage{fancyhdr}
-- \pagestyle{fancy}
-- \fancyhead[CO,CE]{\thetitle}
-- \fancyfoot[CO,CE]{Copyright 2018, William G. Foote}
-- \fancyhead[RE,RO]{\thepage}
-- \renewcommand{\footrulewidth}{0.5pt}
+output: flexdashboard::flex_dashboard
 ---
 
 ```{r setup, include=FALSE}
@@ -31,79 +19,12 @@ knitr::knit_hooks$set(mysize = function(before, options, envir) {
   if (before) 
     return(options$size)
 })
+
+options(repos=c(CRAN="http://archive.linux.duke.edu/cran/"))
+install.packages(c('flexdashboard'))
 ```
 
-## Purpose, Process, Product
-
-Various `R` features and finance topics will be reprised in this chapter. Specifically we will practice reading in data, exploring time series, estimating auto and cross correlations, and investigating volatility clustering in financial time series. We will build a simple financial web application. We will explore the extremes of distributions of financial returns. We will summarize our experiences in debrief. 
-
-## Assignment
-
-This assignment will cover Sessions 5 and 6 (two weeks). The assignment is due day of Live Session 7. Submit into **Coursework > Assignments and Grading > Project 3 > Submission** an `RMD`  file with filename **lastname_firstname_Assignment3.Rmd**. If you have difficulties submitting a `.Rmd` file, then submit a `.txt` file. 
-
-1. Use headers (##), r-chunks for code, and text to build a report that addresses the two parts of this project.
-
-2. List in the text the 'R' skills needed to complete this project.
-
-3. List skills and functions (e.g., `fit.GPD()`) used to compute and visualize results.
-
-4. Discuss how well did the results begin to answer the business questions posed at the beginning of each part of the project.
-
-5. **Organize all the code & documentation in the flex_dashboard.**
-
-6. **Knit to flex_dashboard - this will produce html output.**
-
-## Flexdashboard
-
-We begin to expand our range of production capabilities. we started with Knitting .Rmd to PDF file in Assignment1, then moved to knitting .Rmd to HTML file in Assignment2. Now we introduce ourselves to the `flexdashboard` package to start building a web application with multi-page and multi-column design. Later, we will add shiny for interactive pages.
-
-1. Install the `flexdashboard` and `shiny` packages. In Rstudop console type `library(c("flexdashboard", "shiny")) on the command line to attach these packages to the workspace.
-
-2. Go to the RStudio `flexdashboard` site to learn about the basics of building a web application.
-
-3. Go to `File` and click on `New File` where you will choose `R Markdown`. Because you already loaded `flexdashboard` this next step will work. In the dialog box choose `From Template`. You should see a `Flex Dashboard` template choice in the list box, which you will select and then click `OK`. A new `Rmd` file will then appear in the scripts pane of RStudio.
-
-4. `Knit` this new file. A dialog box will appear for you to name the file. 
-
-5. Start to modify this template to document your own data analysis journey from here on out. This will be discussed in detail in Live Session 6.
-
-6. **Join any Office hour prior to Live Session 7 to discuss installation & testing issues.** 
-
-## Problem
-
-A freight forwarder with a fleet of bulk carriers wants to optimize their portfolio in  metals markets with entry into the nickel business and use of the tramp trade.  Tramp ships are the company's "swing" option without any fixed charter or other constraint. They allow the company flexibility in managing several aspects of freight uncertainty. The call for tramp transportation is a _derived demand_ based on the value of the cargoes. This value varies widely in the spot markets. The company allocates \$250 million to manage receivables. The company wants us to:
-
-1.	Retrieve and begin to analyze data about potential commodities for diversification,
-2.	Compare potential commodities with existing commodities in conventional metal spot markets,
-3.	Begin to generate economic scenarios based on events that may, or may not, materialize in the commodities.
-4.	The company wants to mitigate their risk by diversifying their cargo loads. This risk measures the amount of capital the company needs to maintain its portfolio of services.
-
-Here is some additional detail.
-
-1.	Product: Metals commodities and freight charters
-2.	Metal, Company, and Geography:
-    a. Nickel: MMC Norilisk, Russia
-    b. Copper: Codelco, Chile and MMC Norilisk, Russia
-    c. Aluminium: Vale, Brasil and Rio Tinto Alcan, Australia
-3.	Customers: Ship Owners, manufacturers, traders
-4.  All metals are traded on the London Metal Exchange 
-
-### Key business questions - answer these at the end
-
-1.	How would the performance of these commodities affect the size and timing of shipping arrangements?
-2.	How would the value of new shipping arrangements affect the value of our business with our current customers?
-3.	How would we manage the allocation of existing resources given we have just landed in this new market?
-
-### Getting to a reponse - these detailed questions are answered in part by the tables, graphs and models developed - add commentary as needed to explain the outputs
-
-1. What is the decision the freight-forwarder must make? List key business questions and data needed to help answer these questions and support the freight-forwarder's decision. Retrieve data and build financial market detail into the data story behind the questions.
-
-2. Develop the stylized facts of the markets the freight-forwarder faces. Include level, returns, size times series plots. Calculate and display in a table the summary statistics, including quantiles, of each of these series. Use autocorrelation, partial autocorrelation, and cross correlation functions to understand some of the persistence of returns including leverage and volatility clustering effects. Use quantile regressions to develop the distribution of sensitivity of each market to spill-over effects from other markets. Interpret these stylized "facts" in terms of the business decision the freight-forwarder makes.
-
-3. How much capital would the freight-forwarder need? Determine various measures of risk in the tail of each metal's distribution. Then figure out a loss function to develop the portfolio of risk, and the determination of risk capital the freight-forwarder might need. Confidence intervals might be used to create a risk management plan with varying tail experience thresholds.
-
-
-```{r }
+```{r, include=FALSE}
 library(ggplot2)
 library(flexdashboard)
 library(shiny)
@@ -112,283 +33,551 @@ library(qrmdata)
 library(xts)
 library(zoo)
 library(psych)
+library(quantreg)
+library(reshape2)
 
+## analysis
 rm(list = ls())
 
-# PAGE: Exploratory Analysis
-data <- na.omit(read.csv("data/metaldata.csv", header = TRUE))
-prices <- data
-# Compute log differences percent using as.matrix to force numeric type
-data.r <- diff(log(as.matrix(data[, -1]))) * 100
-# Create size and direction
-size <- na.omit(abs(data.r)) # size is indicator of volatility
-#head(size)
-colnames(size) <- paste(colnames(size),".size", sep = "") # Teetor
-direction <- ifelse(data.r > 0, 1, ifelse(data.r < 0, -1, 0)) # another indicator of volatility
-colnames(direction) <- paste(colnames(direction),".dir", sep = "")
-# Convert into a time series object: 
-# 1. Split into date and rates
-dates <- as.Date(data$DATE[-1], "%m/%d/%Y")
-dates.chr <- as.character(data$DATE[-1])
-#str(dates.chr)
-values <- cbind(data.r, size, direction)
-# for dplyr pivoting and ggplot2 need a data frame also known as "tidy data"
-data.df <- data.frame(dates = dates, returns = data.r, size = size, direction = direction)
-data.df.nd <- data.frame(dates = dates.chr, returns = data.r, size = size, direction = direction, stringsAsFactors = FALSE) 
-#non-coerced dates for subsetting on non-date columns
-# 2. Make an xts object with row names equal to the dates
-data.xts <- na.omit(as.xts(values, dates)) #order.by=as.Date(dates, "%d/%m/%Y")))
-#str(data.xts)
-data.zr <- as.zooreg(data.xts)
-returns <- data.xts # watch for this data below!
+## PAGE: Exploratory Analysis
+data = na.omit(read.csv("../data/metaldata.csv", header = TRUE))
+prices = data
 
-# PAGE: Market risk 
-corr_rolling <- function(x) {	
-  dim <- ncol(x)	
-  corr_r <- cor(x)[lower.tri(diag(dim), diag = FALSE)]	
+## Compute log differences percent using as.matrix to force numeric type
+data.r = diff(log(as.matrix(data[, -1]))) * 100
+
+##
+## create size and direction
+##
+## Note: size is indicator of volatility
+##
+size = na.omit(abs(data.r))
+
+colnames(size) = paste(colnames(size),".size", sep = "") # Teetor
+
+## another indicator of volatility
+direction = ifelse(data.r > 0, 1, ifelse(data.r < 0, -1, 0)) 
+colnames(direction) = paste(colnames(direction),".dir", sep = "")
+
+##
+## convert into a time series object: 
+##
+
+## 1. split into date and rates
+dates = as.Date(data$DATE[-1], "%m/%d/%Y")
+dates.chr = as.character(data$DATE[-1])
+
+values = cbind(data.r, size, direction)
+data.df = data.frame(
+  dates = dates,
+  returns = data.r,
+  size = size,
+  direction = direction
+)
+
+data.df.nd = data.frame(
+  dates = dates.chr,
+  returns = data.r,
+  size = size,
+  direction = direction,
+  stringsAsFactors = FALSE
+) 
+
+##
+## non-coerced dates for subsetting on non-date columns
+##
+
+## 2. xts object with row names equal to the dates
+data.xts = na.omit(as.xts(values, dates)) #order.by=as.Date(dates, "%d/%m/%Y")))
+data.zr = as.zooreg(data.xts)
+returns = data.xts
+
+##
+## PAGE: Market risk
+##
+corr_rolling = function(x) {	
+  dim = ncol(x)	
+  corr_r = cor(x)[lower.tri(diag(dim), diag = FALSE)]	
   return(corr_r)	
 }
-vol_rolling <- function(x){
+vol_rolling = function(x){
   library(matrixStats)
-  vol_r <- colSds(x)
+  vol_r = colSds(x)
   return(vol_r)
 }
-ALL.r <- data.xts[, 1:3]
-window <- 90 #reactive({input$window})
-corr_r <- rollapply(ALL.r, width = window, corr_rolling, align = "right", by.column = FALSE)
-colnames(corr_r) <- c("nickel.copper", "nickel.aluminium", "copper.aluminium")
-vol_r <- rollapply(ALL.r, width = window, vol_rolling, align = "right", by.column = FALSE)
-colnames(vol_r) <- c("nickel.vol", "copper.vol", "aluminium.vol")
-year <- format(index(corr_r), "%Y")
-r_corr_vol <- merge(ALL.r, corr_r, vol_r, year)
-# Market dependencies
-#library(matrixStats)
-R.corr <- apply.monthly(as.xts(ALL.r), FUN = cor)
-R.vols <- apply.monthly(ALL.r, FUN = colSds) # from MatrixStats	
-# Form correlation matrix for one month 	
-R.corr.1 <- matrix(R.corr[20,], nrow = 3, ncol = 3, byrow = FALSE)	
-rownames(R.corr.1) <- colnames(ALL.r[,1:3])	
-colnames(R.corr.1) <- rownames(R.corr.1)	
-R.corr.1
-R.corr <- R.corr[, c(2, 3, 6)]
-colnames(R.corr) <- c("nickel.copper", "nickel.aluminium", "copper.aluminium") 	
-colnames(R.vols) <- c("nickel.vols", "copper.vols", "aluminium.vols")	
-R.corr.vols <- na.omit(merge(R.corr, R.vols))
-year <- format(index(R.corr.vols), "%Y")
-R.corr.vols.y <- data.frame(nickel.correlation = R.corr.vols[,1], copper.volatility = R.corr.vols[,5], year = year)
-nickel.vols <- as.numeric(R.corr.vols[,"nickel.vols"])	
-copper.vols <- as.numeric(R.corr.vols[,"copper.vols"])	
-aluminium.vols <- as.numeric(R.corr.vols[,"aluminium.vols"])
 
-library(quantreg)
-taus <- seq(.05,.95,.05)	# Roger Koenker UI Bob Hogg and Allen Craig
-fit.rq.nickel.copper <- rq(log(nickel.copper) ~ log(copper.vol), tau = taus, data = r_corr_vol)	
-fit.lm.nickel.copper <- lm(log(nickel.copper) ~ log(copper.vol), data = r_corr_vol)	
-#' Some test statements	
-ni.cu.summary <- summary(fit.rq.nickel.copper, se = "boot")
+ALL.r = data.xts[, 1:3]
+window = 90 #reactive({input$window})
+corr_r = rollapply(
+  ALL.r,
+  width = window,
+  corr_rolling,
+  align = "right",
+  by.column = FALSE
+)
+colnames(corr_r) = c("nickel.copper", "nickel.aluminium", "copper.aluminium")
+vol_r = rollapply(
+  ALL.r,
+  width = window,
+  vol_rolling,
+  align = "right",
+  by.column = FALSE
+)
+colnames(vol_r) = c("nickel.vol", "copper.vol", "aluminium.vol")
+year = format(index(corr_r), "%Y")
+r_corr_vol = merge(ALL.r, corr_r, vol_r, year)
+
+##
+## Market dependencies
+##
+
+#library(matrixStats)
+R.corr = apply.monthly(as.xts(ALL.r), FUN = cor)
+R.vols = apply.monthly(ALL.r, FUN = colSds) # from MatrixStats	
+
+## Form correlation matrix for one month 	
+R.corr.1 = matrix(R.corr[20,], nrow = 3, ncol = 3, byrow = FALSE)	
+rownames(R.corr.1) = colnames(ALL.r[,1:3])	
+colnames(R.corr.1) = rownames(R.corr.1)	
+R.corr.1
+R.corr = R.corr[, c(2, 3, 6)]
+colnames(R.corr) = c("nickel.copper", "nickel.aluminium", "copper.aluminium") 	
+colnames(R.vols) = c("nickel.vols", "copper.vols", "aluminium.vols")	
+R.corr.vols = na.omit(merge(R.corr, R.vols))
+year = format(index(R.corr.vols), "%Y")
+R.corr.vols.y = data.frame(
+  nickel.correlation = R.corr.vols[,1],
+  copper.volatility = R.corr.vols[,5],
+  year = year
+)
+nickel.vols = as.numeric(R.corr.vols[,"nickel.vols"])	
+copper.vols = as.numeric(R.corr.vols[,"copper.vols"])	
+aluminium.vols = as.numeric(R.corr.vols[,"aluminium.vols"])
+
+## Roger Koenker UI Bob Hogg and Allen Craig
+taus = seq(.05,.95,.05)
+fit.rq.nickel.copper = rq(log(nickel.copper) ~ log(copper.vol), tau = taus, data = r_corr_vol)	
+fit.lm.nickel.copper = lm(log(nickel.copper) ~ log(copper.vol), data = r_corr_vol)	
+ni.cu.summary = summary(fit.rq.nickel.copper, se = "boot")
+
+title.chg = "Metals Market Percent Changes"
 ```
 
-**TRY THE OTHER COMBINATIONS**
+```{r , echo=FALSE}
+## pacf here
+one = ts(data.df$returns.nickel)
+two = ts(data.df$returns.copper)
 
-```{r }
-title.chg <- "Metals Market Percent Changes"
-autoplot.zoo(data.xts[,1:3]) + ggtitle(title.chg) + ylim(-5, 5)
-autoplot.zoo(data.xts[,4:6]) + ggtitle(title.chg) + ylim(-5, 5)
-acf(coredata(data.xts[,1:3])) # returns
-acf(coredata(data.xts[,4:6])) # sizes
-#pacf here
-one <- ts(data.df$returns.nickel)
-two <- ts(data.df$returns.copper)
-# or
-one <- ts(data.zr[,1])
-two <- ts(data.zr[,2])
-title.chg <- "Nickel vs. Copper"
-ccf(one, two, main = title.chg, lag.max = 20, xlab = "", ylab = "", ci.col = "red")
-# build function to repeat these routines
-run_ccf <- function(one, two, main = title.chg, lag = 20, color = "red"){
+## build function to repeat these routines
+run_ccf = function(one, two, main = title.chg, lag = 20, color = "red"){
   # one and two are equal length series
   # main is title
   # lag is number of lags in cross-correlation
   # color is color of dashed confidence interval bounds
   stopifnot(length(one) == length(two))
-  one <- ts(one)
-  two <- ts(two)
-  main <- main
-  lag <- lag
-  color <- color
+  one = ts(one)
+  two = ts(two)
+  main = main
+  lag = lag
+  color = color
   ccf(one, two, main = main, lag.max = lag, xlab = "", ylab = "", ci.col = color)
-  #end run_ccf
 }
-title <- "nickel-copper"
-run_ccf(one, two, main = title, lag = 20, color = "red")
-# now for volatility (sizes)
-one <- abs(data.zr[,1])
-two <- abs(data.zr[,2])
-title <- "Nickel-Copper: volatility"
-run_ccf(one, two, main = title, lag = 20, color = "red")
+
 ##
-# Load the data_moments() function
+## Load the data_moments() function
 ## data_moments function
 ## INPUTS: r vector
 ## OUTPUTS: list of scalars (mean, sd, median, skewness, kurtosis)
-data_moments <- function(data){
+##
+data_moments = function(data) {
   library(moments)
   library(matrixStats)
-  mean.r <- colMeans(data)
-  median.r <- colMedians(data)
-  sd.r <- colSds(data)
-  IQR.r <- colIQRs(data)
-  skewness.r <- skewness(data)
-  kurtosis.r <- kurtosis(data)
-  result <- data.frame(mean = mean.r, median = median.r, std_dev = sd.r, IQR = IQR.r, skewness = skewness.r, kurtosis = kurtosis.r)
+  mean.r = colMeans(data)
+  median.r = colMedians(data)
+  sd.r = colSds(data)
+  IQR.r = colIQRs(data)
+  skewness.r = skewness(data)
+  kurtosis.r = kurtosis(data)
+  result = data.frame(
+    mean = mean.r,
+    median = median.r,
+    std_dev = sd.r,
+    IQR = IQR.r,
+    skewness = skewness.r,
+    kurtosis = kurtosis.r
+  )
   return(result)
 }
-# Run data_moments()
-answer <- data_moments(data.xts[, 5:8])
-# Build pretty table
-answer <- round(answer, 4)
-knitr::kable(answer)
-mean(data.xts[,4])
-##
-returns1 <- returns[,1]
-colnames(returns1) <- "Returns" #kluge to coerce column name for df
-returns1.df <- data.frame(Returns = returns1[,1], Distribution = rep("Historical", each = length(returns1)))
+
+## Run data_moments()
+answer = data_moments(data.xts[, 5:8])
+
+alpha = 0.95
+
+## returns 1
+returns1 = returns[,1]
+colnames(returns1) = "Returns" #kluge to coerce column name for df
+returns1.df = data.frame(
+    Returns = returns1[,1],
+    Distribution = rep("Historical", each = length(returns1))
+)
   
-alpha <- 0.95 # reactive({ifelse(input$alpha.q>1,0.99,ifelse(input$alpha.q<0,0.001,input$alpha.q))})
-  
-# Value at Risk
-VaR.hist <- quantile(returns1,alpha)
-VaR.text <- paste("Value at Risk =", round(VaR.hist, 2))
-  
-# Determine the max y value of the desity plot.
-# This will be used to place the text above the plot
-VaR.y <- max(density(returns1.df$Returns)$y)
-  
+## Value at Risk
+VaR1.hist = quantile(returns1,alpha)
+VaR1.text = paste("Value at Risk =", round(VaR1.hist, 2))
+
+## Determine the max y value of the desity plot.
+## This will be used to place the text above the plot
+VaR1.y = max(density(returns1.df$Returns)$y)
+
 # Expected Shortfall
-ES.hist <- median(returns1[returns1 > VaR.hist])
-ES.text <- paste("Expected Shortfall =", round(ES.hist, 2))
+ES1.hist = median(returns1[returns1 > VaR1.hist])
+ES1.text = paste("Expected Shortfall =", round(ES1.hist, 2))
+
+## returns 2
+returns2 = returns[,2]
+colnames(returns2) = "Returns" #kluge to coerce column name for df
+returns2.df = data.frame(
+    Returns = returns2[,1],
+    Distribution = rep("Historical", each = length(returns2))
+)
+
+## Value at Risk
+VaR2.hist = quantile(returns2,alpha)
+VaR2.text = paste("Value at Risk =", round(VaR2.hist, 2))
+
+## Determine the max y value of the desity plot.
+## This will be used to place the text above the plot
+VaR2.y = max(density(returns2.df$Returns)$y)
+
+# Expected Shortfall
+ES2.hist = median(returns1[returns2 > VaR2.hist])
+ES2.text = paste("Expected Shortfall =", round(ES2.hist, 2))
+
+## returns 3
+returns3 = returns[,3]
+colnames(returns3) = "Returns" #kluge to coerce column name for df
+returns3.df = data.frame(
+    Returns = returns3[,1],
+    Distribution = rep("Historical", each = length(returns3))
+)
   
-p <- ggplot(returns1.df, aes(x = Returns, fill = Distribution)) + geom_density(alpha = 0.5) + 
-    geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "firebrick1") + 
-    geom_vline(aes(xintercept = ES.hist), size = 1, color = "firebrick1") +
-    annotate("text", x = 2+ VaR.hist, y = VaR.y*1.05, label = VaR.text) +
-    annotate("text", x = 1.5+ ES.hist, y = VaR.y*1.1, label = ES.text) + scale_fill_manual( values = "dodgerblue4")
-p
+## Value at Risk
+VaR3.hist = quantile(returns3,alpha)
+VaR3.text = paste("Value at Risk =", round(VaR3.hist, 2))
+
+## Determine the max y value of the desity plot.
+## This will be used to place the text above the plot
+VaR3.y = max(density(returns3.df$Returns)$y)
+
+# Expected Shortfall
+ES3.hist = median(returns1[returns3 > VaR3.hist])
+ES3.text = paste("Expected Shortfall =", round(ES3.hist, 2))
 ```
 
-**DO THE SAME FOR RETURNS 2 AND 3**
+# Metal
 
-```{r }
+## Column {data-width=600 .tabset}
+
+### Sizes
+
+#### CCF
+
+```{r, echo=FALSE}
+one = ts(data.zr[,2])
+two = ts(data.zr[,3])
+title = "Copper vs. Aluminum"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+#### Volatility
+
+```{r, echo=FALSE}
+one = abs(data.zr[,2])
+two = abs(data.zr[,3])
+title = "Copper vs. Aluminum"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+#### CCF
+
+```{r, echo=FALSE}
+one = ts(data.zr[,1])
+two = ts(data.zr[,2])
+title = "Nickel vs. Copper"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+#### Volatility
+
+```{r, echo=FALSE}
+one = abs(data.zr[,1])
+two = abs(data.zr[,2])
+title = "Nickel vs. Copper"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+#### CCF
+
+```{r, echo=FALSE}
+one = ts(data.zr[,1])
+two = ts(data.zr[,3])
+title = "Nickel vs. Aluminum"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+#### Volatility
+
+```{r, echo=FALSE}
+one = abs(data.zr[,1])
+two = abs(data.zr[,3])
+title = "Nickel vs. Aluminum"
+run_ccf(one, two, main = title, lag = 20, color = "red")
+```
+
+### Moments
+
+```{r, echo=FALSE}
+answer = round(answer, 4)
+knitr::kable(answer)
+```
+
+## Column {data-width=600 .tabset}
+
+### Nickel
+
+```{r, echo=FALSE}
+ggplot(
+    returns1.df,
+    aes(x = Returns, fill = Distribution)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(aes(xintercept = VaR1.hist), linetype = "dashed", size = 1, color = "firebrick1") +
+    geom_vline(aes(xintercept = ES1.hist), size = 1, color = "firebrick1") +
+    annotate("text", x = 2+ VaR1.hist, y = VaR1.y*1.05, label = VaR1.text) +
+    annotate("text", x = 1.5+ ES1.hist, y = VaR1.y*1.1, label = ES1.text) +
+    scale_fill_manual( values = "dodgerblue4") +
+    ggtitle('Nickel Returns')
+```
+
+### Copper
+
+```{r, echo=FALSE}
+ggplot(
+    returns2.df,
+    aes(x = Returns, fill = Distribution)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(aes(xintercept = VaR2.hist), linetype = "dashed", size = 1, color = "firebrick1") +
+    geom_vline(aes(xintercept = ES2.hist), size = 1, color = "firebrick1") +
+    annotate("text", x = 2+ VaR2.hist, y = VaR1.y*1.05, label = VaR2.text) +
+    annotate("text", x = 1.5+ ES2.hist, y = VaR1.y*1.1, label = ES2.text) +
+    scale_fill_manual( values = "dodgerblue4") +
+    ggtitle('Copper Returns')
+```
+
+### Aluminum
+
+```{r, echo=FALSE}
+ggplot(
+    returns3.df,
+    aes(x = Returns, fill = Distribution)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(aes(xintercept = VaR3.hist), linetype = "dashed", size = 1, color = "firebrick1") +
+    geom_vline(aes(xintercept = ES3.hist), size = 1, color = "firebrick1") +
+    annotate("text", x = 2+ VaR3.hist, y = VaR1.y*1.05, label = VaR3.text) +
+    annotate("text", x = 1.5+ ES3.hist, y = VaR3.y*1.1, label = ES3.text) +
+    scale_fill_manual( values = "dodgerblue4") +
+    ggtitle('Aluminum Returns')
+```
+
+# Returns & Sizes
+
+## Column {data-width=600 .tabset}
+
+### ACF: Returns
+
+```{r, echo=FALSE}
+acf(coredata(data.xts[,1:3]))
+```
+
+### ACF: Sizes
+
+```{r, echo=FALSE}
+acf(coredata(data.xts[,4:6])) # sizes
+```
+
+## Column {data-width=600 .tabset}
+
+### Returns
+
+```{r, echo=FALSE}
+autoplot.zoo(data.xts[,1:3]) + ggtitle(title.chg) + ylim(-5, 5)
+```
+
+### Sizes
+
+```{r, echo=FALSE}
+autoplot.zoo(data.xts[,4:6]) + ggtitle(title.chg) + ylim(-5, 5)
+```
+
+```{r, echo=FALSE}
+##
 ## Now for Loss Analysis
-# Get last prices
-price.last <- as.numeric(tail(data[, -1], n=1))
-# Specify the positions
-position.rf <- c(1/3, 1/3, 1/3)
-# And compute the position weights
-w <- position.rf * price.last
-# Fan these  the length and breadth of the risk factor series
-weights.rf <- matrix(w, nrow=nrow(data.r), ncol=ncol(data.r), byrow=TRUE)
+##
+
+price.last = as.numeric(tail(data[, -1], n=1))
+
+## Specify the positions
+position.rf = c(1/3, 1/3, 1/3)
+
+## And compute the position weights
+w = position.rf * price.last
+
+## Fan these  the length and breadth of the risk factor series
+weights.rf = matrix(w, nrow=nrow(data.r), ncol=ncol(data.r), byrow=TRUE)
 #head(rowSums((exp(data.r/100)-1)*weights.rf), n=3)
+
+## exp, we will either earn or lose from original dollar
 ## We need to compute exp(x) - 1 for very small x: expm1 accomplishes this
-#head(rowSums((exp(data.r/100)-1)*weights.rf), n=4)
-loss.rf <- -rowSums(expm1(data.r/100) * weights.rf)
-loss.rf.df <- data.frame(Loss = loss.rf, Distribution = rep("Historical", each = length(loss.rf)))
+## head(rowSums((exp(data.r/100)-1)*weights.rf), n=4
+## weights.rf, is todays values
+## expm1(data.r/100) == (e^x) - 1 (m1 means -1, euler)
+## data.r/100 == x
+## data.r, is the return, which is normalized to compare against the dollar
+## e^x is the value tomorrow, taking the log brings us back to x
+
+loss.rf = -rowSums(expm1(data.r/100) * weights.rf)
+loss.rf.df = data.frame(Loss = loss.rf, Distribution = rep("Historical", each = length(loss.rf)))
+
+## trying to find good threshold
+##
+## exceedance line slices the curve
+
 ## Simple Value at Risk and Expected Shortfall
-alpha.tolerance <- .95
-VaR.hist <- quantile(loss.rf, probs=alpha.tolerance, names=FALSE)
+alpha.tolerance = .95
+VaR.hist = quantile(loss.rf, probs=alpha.tolerance, names=FALSE)
+
 ## Just as simple Expected shortfall
-ES.hist <- median(loss.rf[loss.rf > VaR.hist])
-VaR.text <- paste("Value at Risk =\n", round(VaR.hist, 2)) # ="VaR"&c12
-ES.text <- paste("Expected Shortfall \n=", round(ES.hist, 2))
-title.text <- paste(round(alpha.tolerance*100, 0), "% Loss Limits")
-# using histogram bars instead of the smooth density
-p <- ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_histogram(alpha = 0.8) + geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "blue") + geom_vline(aes(xintercept = ES.hist), size = 1, color = "blue") + annotate("text", x = VaR.hist, y = 40, label = VaR.text) + annotate("text", x = ES.hist, y = 20, label = ES.text) + xlim(0, 500) + ggtitle(title.text)
-p
+ES.hist = median(loss.rf[loss.rf > VaR.hist])
+VaR.text = paste("Value at Risk =\n", round(VaR.hist, 2)) # ="VaR"&c12
+ES.text = paste("Expected Shortfall \n=", round(ES.hist, 2))
+title.text = paste(round(alpha.tolerance*100, 0), "% Loss Limits")
+
 # mean excess plot to determine thresholds for extreme event management
-data <- as.vector(loss.rf) # data is purely numeric
-umin <-  min(data)         # threshold u min
-umax <-  max(data) - 0.1   # threshold u max
-nint <- 100                # grid length to generate mean excess plot
-grid.0 <- numeric(nint)    # grid store
-e <- grid.0                # store mean exceedances e
-upper <- grid.0            # store upper confidence interval
-lower <- grid.0            # store lower confidence interval
-u <- seq(umin, umax, length = nint) # threshold u grid
-alpha <- 0.95                  # confidence level
+data = as.vector(loss.rf) # data is purely numeric
+umin =  min(data)         # threshold u min
+umax =  max(data) - 0.1   # threshold u max
+nint = 100                # grid length to generate mean excess plot
+grid.0 = numeric(nint)    # grid store
+e = grid.0                # store mean exceedances e
+upper = grid.0            # store upper confidence interval
+lower = grid.0            # store lower confidence interval
+u = seq(umin, umax, length = nint) # threshold u grid
+alpha = 0.95                  # confidence level
 for (i in 1:nint) {
-    data <- data[data > u[i]]  # subset data above thresholds
-    e[i] <- mean(data - u[i])  # calculate mean excess of threshold
-    sdev <- sqrt(var(data))    # standard deviation
-    n <- length(data)          # sample size of subsetted data above thresholds
-    upper[i] <- e[i] + (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # upper confidence interval
-    lower[i] <- e[i] - (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # lower confidence interval
+    data = data[data > u[i]]  # subset data above thresholds
+    e[i] = mean(data - u[i])  # calculate mean excess of threshold
+    sdev = sqrt(var(data))    # standard deviation
+    n = length(data)          # sample size of subsetted data above thresholds
+    upper[i] = e[i] + (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # upper confidence interval
+    lower[i] = e[i] - (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # lower confidence interval
   }
-mep.df <- data.frame(threshold = u, threshold.exceedances = e, lower = lower, upper = upper)
-loss.excess <- loss.rf[loss.rf > u]
-# Voila the plot => you may need to tweak these limits!
-p <- ggplot(mep.df, aes( x= threshold, y = threshold.exceedances)) + geom_line() + geom_line(aes(x = threshold, y = lower), colour = "red") + geom_line(aes(x = threshold,  y = upper), colour = "red") + annotate("text", x = 400, y = 200, label = "upper 95%") + annotate("text", x = 200, y = 0, label = "lower 5%")
+mep.df = data.frame(threshold = u, threshold.exceedances = e, lower = lower, upper = upper)
+loss.excess = loss.rf[loss.rf > u]
+
 ##
 # GPD to describe and analyze the extremes
 #
 #library(QRM)
-alpha.tolerance <- 0.95
-u <- quantile(loss.rf, alpha.tolerance , names=FALSE)
-fit <- fit.GPD(loss.rf, threshold=u) # Fit GPD to the excesses
-xi.hat <- fit$par.ests[["xi"]] # fitted xi
-beta.hat <- fit$par.ests[["beta"]] # fitted beta
-data <- loss.rf
-n.relative.excess <- length(loss.excess) / length(loss.rf) # = N_u/n
-VaR.gpd <- u + (beta.hat/xi.hat)*(((1-alpha.tolerance) / n.relative.excess)^(-xi.hat)-1) 
-ES.gpd <- (VaR.gpd + beta.hat-xi.hat*u) / (1-xi.hat)
-n.relative.excess <- length(loss.excess) / length(loss.rf) # = N_u/n
-VaR.gpd <- u + (beta.hat/xi.hat)*(((1-alpha.tolerance) / n.relative.excess)^(-xi.hat)-1) 
-ES.gpd <- (VaR.gpd + beta.hat-xi.hat*u) / (1-xi.hat)
-# Plot away
-VaRgpd.text <- paste("GPD: Value at Risk =", round(VaR.gpd, 2))
-ESgpd.text <- paste("Expected Shortfall =", round(ES.gpd, 2))
-title.text <- paste(VaRgpd.text, ESgpd.text, sep = " ")
-loss.plot <- ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_density(alpha = 0.2)
-loss.plot <- loss.plot + geom_vline(aes(xintercept = VaR.gpd), colour = "blue", linetype = "dashed", size = 0.8)
-loss.plot <- loss.plot + geom_vline(aes(xintercept = ES.gpd), colour = "blue", size = 0.8) 
-  #+ annotate("text", x = 300, y = 0.0075, label = VaRgpd.text, colour = "blue") + annotate("text", x = 300, y = 0.005, label = ESgpd.text, colour = "blue")
-loss.plot <- loss.plot + xlim(0,500) + ggtitle(title.text)
-#
-# Confidence in GPD
-#
-showRM(fit, alpha = 0.99, RM = "VaR", method = "BFGS")
-showRM(fit, alpha = 0.99, RM = "ES", method = "BFGS") 
+alpha.tolerance = 0.95
+u = quantile(loss.rf, alpha.tolerance , names=FALSE)
+fit = fit.GPD(loss.rf, threshold=u) # Fit GPD to the excesses
+xi.hat = fit$par.ests[["xi"]] # fitted xi
+beta.hat = fit$par.ests[["beta"]] # fitted beta
+data = loss.rf
+n.relative.excess = length(loss.excess) / length(loss.rf) # = N_u/n
+VaR.gpd = u + (beta.hat/xi.hat)*(((1-alpha.tolerance) / n.relative.excess)^(-xi.hat)-1)
+ES.gpd = (VaR.gpd + beta.hat-xi.hat*u) / (1-xi.hat)
+n.relative.excess = length(loss.excess) / length(loss.rf) # = N_u/n
+VaR.gpd = u + (beta.hat/xi.hat)*(((1-alpha.tolerance) / n.relative.excess)^(-xi.hat)-1)
+ES.gpd = (VaR.gpd + beta.hat-xi.hat*u) / (1-xi.hat)
 
-##
-# Generate overlay of historical and GPD; could also use Gaussian or t as well from the asynchronous material
+# Plot away
+VaRgpd.text = paste("GPD: Value at Risk =", round(VaR.gpd, 2))
+ESgpd.text = paste("Expected Shortfall =", round(ES.gpd, 2))
+title.text = paste(VaRgpd.text, ESgpd.text, sep = " ")
 ```
 
+# Loss Analysis
 
-## ** Conclusion (organize within flex_dashboard)**
+## Column {data-width=600 .tabset}
 
-### Skills and Tools
-:
-(REPLACE text here)
+### Count
 
-What skills contributed towards data exploration and anaytics?
+```{r, echo=FALSE}
+ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) +
+  geom_histogram(alpha = 0.8) +
+  geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "blue") +
+  geom_vline(aes(xintercept = ES.hist), size = 1, color = "blue") +
+  annotate("text", x = VaR.hist, y = 40, label = VaR.text) +
+  annotate("text", x = ES.hist, y = 20, label = ES.text) + xlim(0, 500) +
+  ggtitle(title.text)
+```
 
-:
+### Density
 
-### Data Insights
-:
-(REPLACE text here)
+```{r, echo=FALSE}
+ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_density(alpha = 0.2) +
+  geom_vline(aes(xintercept = VaR.gpd), colour = "blue", linetype = "dashed", size = 0.8) +
+  geom_vline(aes(xintercept = ES.gpd), colour = "blue", size = 0.8) +
+  annotate("text", x = 300, y = 0.005, label = ESgpd.text, colour = "blue") +
+  xlim(0,500) +
+  ggtitle(title.text)
+```
 
-Explain some of the data exploration, statistics and graphs here - include GPD.
+## Column {data-width=600 .tabset}
 
-:
+### Value at Risk {.tabset}
 
-### Business Remarks
-:
-(REPLACE text here)
+```{r, echo=FALSE}
+showRM(fit, alpha = 0.99, RM = "VaR", method = "BFGS")
+```
 
-How would the performance of these commodities affect the size and timing of shipping arrangements?
+### Expected Shorfall
 
-How would the value of new shipping arrangements affect the value of our business with our current customers?
+```{r, echo=FALSE}
+showRM(fit, alpha = 0.99, RM = "ES", method = "BFGS")
+```
 
-How would we manage the allocation of existing resources given we have just landed in this new market? 
+# Final Remarks
 
-:
+## Column {data-width=600}
+
+### Conclusions
+
+```
+Methods:
+
+- Flexdashboard
+- rq, quantile regression
+- as.zooreg, creates series-like object
+- autoplot.zoo, plotting for time-series
+- acf, autocorrelation
+
+Data Insights:
+
+Business Remarks:
+1.	How would the performance of these commodities affect the size and timing of shipping arrangements?
+
+2.	How would the value of new shipping arrangements affect the value of our business with our current customers?
+
+3.	How would we manage the allocation of existing resources given we have just landed in this new market?
+```
+
+Column {data-width=500}
+-------------------------------------
+
+### threshold
+
+```{r, echo=FALSE}
+ggplot(mep.df, aes( x= threshold, y = threshold.exceedances)) + geom_line() + geom_line(aes(x = threshold, y = lower), colour = "red") + geom_line(aes(x = threshold,  y = upper), colour = "red") + annotate("text", x = 400, y = 200, label = "upper 95%") + annotate("text", x = 200, y = 0, label = "lower 5%")
+```

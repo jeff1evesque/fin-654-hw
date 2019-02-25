@@ -560,7 +560,7 @@ showRM(fit, alpha = 0.99, RM = "ES", method = "BFGS")
 ```
 The following R utilities were used and provided facilities to build custom functions required for exploration and analysis in this study:
 
-- flexdashboard, creates HTML with row and colum formatting
+- flexdashboard, creates HTML with row and column formatting
 - rq, quantile regression
 - as.zooreg, creates series-like object
 - autoplot.zoo, plotting for time-series
@@ -603,6 +603,8 @@ New shipping arrangements could pivot away companies from current customers to t
 
 Understanding the price sensitivity of the metals market (using the provided graphs), is an important requirement for accurate asset allotment. Furthermore, information such as VAR and ES, allows resources and budget to be properly distributed, with the intention to improves processes, without negative side-effects to existing business model(s). 
 ```
+
+<br/>
 
 ### Definitions
 

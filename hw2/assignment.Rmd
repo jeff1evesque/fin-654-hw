@@ -1,8 +1,8 @@
 ---
 title: 'Project #2: foreign exchange market interactions'
 output:
-  pdf_document:
-    toc: yes
+#  pdf_document:
+#    toc: yes
   word_document:
     toc: yes
   html_document:

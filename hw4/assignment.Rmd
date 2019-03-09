@@ -103,7 +103,7 @@ Row
 
 ### Purpose, Process, Product
 
-We built a simple portfolio in Assignment 3 with equally weighted allocataions to the commodities we traded. We continue with the freight forwarder. We will compute optimal holdings of risky and risk-free assets for the Markowitz mean-variance model. We will then build a simple financial web application. With this tool we can also explore impact of the extremes of distributions of financial returns on portfolio results. 
+We built a simple portfolio in Assignment 3 with equally weighted allocations to the commodities we traded. We continue with the freight forwarder. We will compute optimal holdings of risky and risk-free assets for the Markowitz mean-variance model. We will then build a simple financial web application. With this tool we can also explore impact of the extremes of distributions of financial returns on portfolio results. 
 
 ### Problem
 

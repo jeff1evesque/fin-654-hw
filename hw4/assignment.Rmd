@@ -24,7 +24,7 @@ library(psych)
 
 rm(list = ls())
 # PAGE: Exploratory Analysis
-data = na.omit(read.csv("data/metaldata.csv", header = TRUE))
+data = na.omit(read.csv("../data/metaldata.csv", header = TRUE))
 #data$DATE = as.Date(data$DATE, "%m/%d/%Y")
 #data = data[order(data$DATE),]
 # Compute log differences percent using as.matrix to force numeric type
@@ -478,7 +478,8 @@ renderPlotly({
     geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "firebrick1") + 
     geom_vline(aes(xintercept = ES.hist), size = 1, color = "firebrick1") +
     annotate("text", x = 2+VaR.hist, y = VaR.y*1.05, label = VaR.text) +
-    annotate("text", x = 1.5+ES.hist, y = VaR.y*1.1, label = ES.text) +     scale_fill_manual( values = "dodgerblue4")
+    annotate("text", x = 1.5+ES.hist, y = VaR.y*1.1, label = ES.text) +
+    scale_fill_manual( values = "dodgerblue4")
   ggplotly(p)
 })
 
@@ -511,7 +512,14 @@ data_moments = function(data){
   IQR.r = colIQRs(data)
   skewness.r = skewness(data)
   kurtosis.r = kurtosis(data)
-  result = data.frame(mean = mean.r, median = median.r, std_dev = sd.r, IQR = IQR.r, skewness = skewness.r, kurtosis = kurtosis.r)
+  result = data.frame(
+    mean = mean.r,
+    median = median.r,
+    std_dev = sd.r,
+    IQR = IQR.r,
+    skewness = skewness.r,
+    kurtosis = kurtosis.r
+  )
   return(result)
 }
 # Run data_moments()
@@ -628,7 +636,11 @@ weights.rf = matrix(w, nrow=nrow(data.r), ncol=ncol(data.r), byrow=TRUE)
 ## We need to compute exp(x) - 1 for very small x: expm1 accomplishes this
 #head(rowSums((exp(data.r/100)-1)*weights.rf), n=4)
 loss.rf = -rowSums(expm1(data.r/100) * weights.rf)
-loss.rf.df = data.frame(Loss = loss.rf, Distribution = rep("Historical", each = length(loss.rf)))
+loss.rf.df = data.frame(
+  Loss = loss.rf,
+  Distribution = rep("Historical",
+  each = length(loss.rf))
+)
 ## Simple Value at Risk and Expected Shortfall
 alpha.tolerance = .95
 VaR.hist = quantile(loss.rf, probs=alpha.tolerance, names=FALSE)
@@ -638,7 +650,14 @@ VaR.text = paste("Value at Risk =\n", round(VaR.hist, 2)) # ="VaR"&c12
 ES.text = paste("Expected Shortfall \n=", round(ES.hist, 2))
 title.text = paste(round(alpha.tolerance*100, 0), "% Loss Limits")
 renderPlotly({
-  p = ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_histogram(alpha = 0.8) + geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "blue") + geom_vline(aes(xintercept = ES.hist), size = 1, color = "blue") + annotate("text", x = VaR.hist, y = 40, label = VaR.text) + annotate("text", x = ES.hist, y = 20, label = ES.text) + xlim(0, 500) + ggtitle(title.text)
+  p = ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) +
+  geom_histogram(alpha = 0.8) +
+  geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "blue") +
+  geom_vline(aes(xintercept = ES.hist), size = 1, color = "blue") +
+  annotate("text", x = VaR.hist, y = 40, label = VaR.text) +
+  annotate("text", x = ES.hist, y = 20, label = ES.text) +
+  xlim(0, 500) +
+  ggtitle(title.text)
   ggplotly(p)
 })
 ```
@@ -706,12 +725,22 @@ for (i in 1:nint) {
     upper[i] = e[i] + (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # upper confidence interval
     lower[i] = e[i] - (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # lower confidence interval
   }
-mep.df = data.frame(threshold = u, threshold.exceedances = e, lower = lower, upper = upper)
+mep.df = data.frame(
+  threshold = u,
+  threshold.exceedances = e,
+  lower = lower,
+  upper = upper
+)
 loss.excess = loss.rf[loss.rf > u]
 # Voila the plot => you may need to tweak these limits!
 renderPlotly({
-p = ggplot(mep.df, aes( x= threshold, y = threshold.exceedances)) + geom_line() + geom_line(aes(x = threshold, y = lower), colour = "red") + geom_line(aes(x = threshold,  y = upper), colour = "red") + annotate("text", x = 400, y = 200, label = "upper 95%") + annotate("text", x = 200, y = 0, label = "lower 5%")
-ggplotly(p)
+  p = ggplot(mep.df, aes( x= threshold, y = threshold.exceedances)) +
+  geom_line() +
+  geom_line(aes(x = threshold, y = lower), colour = "red") +
+  geom_line(aes(x = threshold,  y = upper), colour = "red") +
+  annotate("text", x = 400, y = 200, label = "upper 95%") +
+  annotate("text", x = 200, y = 0, label = "lower 5%")
+  ggplotly(p)
 })
 ```
 
@@ -736,11 +765,14 @@ renderPlotly({
   VaRgpd.text = paste("GPD: Value at Risk =", round(VaR.gpd, 2))
   ESgpd.text = paste("Expected Shortfall =", round(ES.gpd, 2))
   title.text = paste(VaRgpd.text, ESgpd.text, sep = " ")
-  loss.plot = ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_density(alpha = 0.2)
-  loss.plot = loss.plot + geom_vline(aes(xintercept = VaR.gpd), colour = "blue", linetype = "dashed", size = 0.8)
+  loss.plot = ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) +
+    geom_density(alpha = 0.2)
+  loss.plot = loss.plot +
+    geom_vline(aes(xintercept = VaR.gpd), colour = "blue", linetype = "dashed", size = 0.8)
   loss.plot = loss.plot + geom_vline(aes(xintercept = ES.gpd), colour = "blue", size = 0.8) 
   #+ annotate("text", x = 300, y = 0.0075, label = VaRgpd.text, colour = "blue") + annotate("text", x = 300, y = 0.005, label = ESgpd.text, colour = "blue")
-  loss.plot = loss.plot + xlim(0,500) + ggtitle(title.text)
+  loss.plot = loss.plot + xlim(0,500) +
+    ggtitle(title.text)
   ggplotly(loss.plot)
 })
 ```
@@ -921,7 +953,9 @@ col.P = ifelse(mu.P > mu.P[ind2], "blue", "grey")
 weights.extr = weights[ind,] # for use in calculating tengency risk measures
 qrisk.mu.df$col.P = col.P
 renderPlotly({
-  p = ggplot(qrisk.mu.df, aes(x = qrisk.P, y = mu.P, group = 1)) + geom_line(aes(colour= col.P, group = col.P)) + scale_colour_identity()  
+  p = ggplot(qrisk.mu.df, aes(x = qrisk.P, y = mu.P, group = 1)) +
+    geom_line(aes(colour= col.P, group = col.P)) +
+    scale_colour_identity()
   p = p + geom_point(aes(x = 0, y = mu.free), colour = "red")
   options(digits=3)
   p = p + geom_abline(intercept = mu.free, slope = (mu.P[ind]-mu.free)/qrisk.P[ind], colour = "red")
@@ -988,13 +1022,17 @@ ind3 =  (mu.P > mu.P[ind2]) ## finally the efficient frontier
 col.P = ifelse(mu.P > mu.P[ind2], "blue", "grey")
 sigma.mu.df$col.P = col.P
 renderPlotly({
-p = ggplot(sigma.mu.df, aes(x = sigma.P, y = mu.P, group = 1)) + geom_line(aes(colour=col.P, group = col.P)) + scale_colour_identity() # + xlim(0, max(sd.R*1.1))  + ylim(0, max(mean.R)*1.1) + 
+p = ggplot(sigma.mu.df, aes(x = sigma.P, y = mu.P, group = 1)) +
+  geom_line(aes(colour=col.P, group = col.P)) +
+  scale_colour_identity() # + xlim(0, max(sd.R*1.1))  + ylim(0, max(mean.R)*1.1) +
 p = p + geom_point(aes(x = 0, y = mu.free), colour = "red")
 options(digits=4)
 p = p + geom_abline(intercept = mu.free, slope = (mu.P[ind]-mu.free)/sigma.P[ind], colour = "red")
 p = p + geom_point(aes(x = sigma.P[ind], y = mu.P[ind], pch="*")) 
 p = p + geom_point(aes(x = sigma.P[ind2], y = mu.P[ind2], pch="-")) ## show min var portfolio
-p = p + annotate("text", x = sd.R[1], y = mean.R[1], label = names.R[1]) + annotate("text", x = sd.R[2], y = mean.R[2], label = names.R[2]) + annotate("text", x = sd.R[3], y = mean.R[3], label = names.R[3])
+p = p + annotate("text", x = sd.R[1], y = mean.R[1], label = names.R[1]) +
+  annotate("text", x = sd.R[2], y = mean.R[2], label = names.R[2]) +
+  annotate("text", x = sd.R[3], y = mean.R[3], label = names.R[3])
 p	### ggplotly(p)
 })
 ```
@@ -1034,7 +1072,9 @@ indx3 =  (mu.P > mu.P[inx2]) ## finally the efficient frontier
 col.P = ifelse(mu.P > mu.P[inx2], "blue", "grey")
 sigma.mu.df$col.P = col.P
 renderPlotly({
-p = ggplot(sigma.mu.df, aes(x = sigma.P, y = mu.P, group = 1)) + geom_line(aes(colour=col.P, group = col.P)) + scale_colour_identity() # + xlim(0, max(sd.R*1.1))  + ylim(0, max(mean.R)*1.1) + 
+p = ggplot(sigma.mu.df, aes(x = sigma.P, y = mu.P, group = 1)) +
+  geom_line(aes(colour=col.P, group = col.P)) +
+  scale_colour_identity() # + xlim(0, max(sd.R*1.1))  + ylim(0, max(mean.R)*1.1) +
 p = p + geom_point(aes(x = 0, y = mu.free), colour = "red")
 options(digits=4)
 p = p + geom_abline(intercept = mu.free, slope = (mu.P[inx]-mu.free)/sigma.P[inx], colour = "red")
@@ -1176,5 +1216,3 @@ Tversky, A and Kahneman, D. (1992), Advances in Prospect Theory: Cumulative repr
 von Nuemann, J. and Morgenstern, O. (1944), Theory of games and economic behaviour, Princeton University Press. 
 
 Zou, Hui and and Ming Yuan (2008), Composite quantile regression and the Oracle model selection theory, Annals of Statistics, 36, 1108-11120.
-
-

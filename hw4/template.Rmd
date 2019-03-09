@@ -206,6 +206,63 @@ where $\Large ES$ is "expected shortfall" and $\Large E$ is the expectation oper
 
 
 
+Instructions
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Assignment
+
+**ASSIGNMENT 4 ADDS PORTFOLIO ANALYTICS TO ASSIGNMENT 3**
+
+The assignment is due day of Live Session 9. Submit into **Coursework > Assignments and Grading > Assignment 4: Team Project 4 > Submission** an `RMD`  file 
+with filename **lastname_firstname_Assignment4.Rmd**. If you have difficulties submitting a `.Rmd` file, then submit a `.txt` file. 
+
+1. Use headers (##), r-chunks for code, and text to build a flexdashboard application.
+* library(flexdashboard)
+* library(shiny)
+
+2. **Study the Shiny interactive code in the Exploratory Analysis** in this file. Similar code will be required in the Final Project.
+* renderValueBox
+* renderPlotly
+
+3. **Address ONLY the Optimization (Markowitz models) and Conclusion portions** in this file, **changing plots and outputs** as you see fit.
+* Optimization
+* Conclusion
+
+4. **Complete the calculations** for the Conclusion.
+* Provide the data insights for portfolio optimization
+* Explain your choice of risk-free rate
+* Determine the weights and the $-value decisions when a) no constrainst b) no negative weights allowed
+
+5. **Explain some of the functions used** to compute and visualize results.
+* List the 'R' skills needed to complete this project
+
+6. **Discuss the business implications** at the end.
+* Explain the buy / sell decisions in each case
+
+**THIS ASSIGNMENT ALSO SERVES AS A TEMPLATE FOR THE FINAL PROJECT**
+
+
+### Flexdashboard and plotly
+
+We continue to expand our range of production capabilities. Now we add some interactivity to the plots.
+
+1. Install the `plotly` packages. In RStudio console type `library(plotly)` or simply include this command in an Rmd script.
+
+2. Go to the RStudio `plotly` site to learn about the basics of of using `plotly` with `ggplot2`.
+
+3. Deposit code that reads data, transforms data and calculates various analytics such as the quantile regression fit from Assignments 3 and 4 into the `setup` (first) chunk of the. Begin to move any plots to code chunks in `###` panes in columns in pages in the growing `The Answer is 42` (or title of your choice) script. 
+
+4. Surround one of the `ggplot2` plots with `renderPlotly({ insert ggplot code here with ggplotly(p) where p is the ggplot2 plot object})`.
+
+5. `Run Document` and see the results.
+
+6. Continue to modify this template to document your own data analysis journey. 
+
+**DO NOT INCLUDE THIS PAGE OF INSTRUCTIONS IN YOUR SUBMISSION**
+
 Data
 =======================================================================
 
@@ -1038,114 +1095,63 @@ row
 
 ### Skills and Tools
 
-Packages to strengthen the analytical work -
-ggplot, scales, quadprog, quantreg, shiny, flexdashboard, qrmdata, xts, matrixStats, zoo, QRM, plotly, and psych
-
-Skills that enable reading, cleaning, and formatting of data are the following -
-
-1. Read.csv() to read the csv file.
-2. na.omit()to remove any missing data.
-3. str() to review data structure.
-4. as.numeric() to convert data to numbers.
-5. as.date() to convert data to dates.
-6. paste() to concatenate vectors after converting to character.
-7. colnames() to rename the columns.
-8. cbind() to take a sequence of vector, matrix or data-frame arguments and combine by columns or rows, respectively.
-9. as.character() returns a string of 1's and 0's or a character vector.
-
-Skills used for data exploration and analytics are the following -
-
-1. head() to return the first part of a vector, matrix, table, data frame or function.
-2. tail() to return the last part of a vector, matrix, table, data frame or function.
-3. summary() to produce result summaries of the results of various model fitting functions.
-4. format() to format an R object for pretty printing.
-5. diff() to return suitably lagged and iterated differences.
-6. ifelse() to return a value with the same shape as test which is filled with elements selected from either yes or no depending on whether the element of test is TRUE or FALSE.
-7. function() to create and store a function for data analysis.
-8. round() to round the values in its first argument to the specified number of decimal places (default 0).
-9. mean() is a generic function for the (trimmed) arithmetic mean.
-10. ts() to create time-series objects.
-11. rollapply() to apply a function to rolling margins of an array.
-12. merge() to merge two data frames by common columns or row names, or do other versions of database join operations.
-13. seq() to generate regular sequences.
-14. rq() to perform a quantile regression on a design matrix, x, of explanatory variables and a vector, y, of responses.
-15. lm() can be used to carry out regression, single stratum analysis of variance and analysis of covariance.
-16. Plot() to make a map of the values of a Raster* object, or make a scatterplot of their values.
-17. split() to divide the data in the vector x into the groups defined by f. 
-18. lapply() to return a list of the same length as X, each element of which is the result of applying FUN to the corresponding element of X.
-19. image_animate() manipulate or combine multiple frames of an image. 
-20. ncol() returns the number of columns.
-21. cor() computes the variance of x and the covariance or correlation of x and y.
-22. apply.monthly() applies a specified function to each distinct period in a given time series object.
-22. quantile() produces sample quantiles corresponding to the given probabilities.
-23. apply.monthly() applies a specified function to each distinct period in a given time series object.
-24. max() returns the maximum of all values in a vector by passing codemax as fn argument to univar function.
-
-Skills used in packaging and express of data in terms of graphs and tables are the following -
-
-1. ggplot()/ggplot2() to generate the graph based on the vectors.
-2. kable() to create a data table.
-3. table() returns a contingency table.
-4. xtable to create LaTeX formatted and rendered table.
-5. ggplotly() to convert a ggplot2::ggplot() object to a plotly object.
-6. autoplot.zoo() takes a zoo object and converts it into a data frame (intended for ggplot2)
-7. ggtitle() to format chart titles.
-8. ylim() to to set the limits of the y axis.
-9. coredata() to extract the core data contained in a (more complex) object and replacing it.
-10. acf() to compute (and by default plots) estimates of the autocovariance or autocorrelation function.
-11. pacf() is the function used for the partial autocorrelations.
+1. Packages: ggplot, scales, quadprog, quantreg, shiny, flexdashboard, qrmdata, xts, matrixStats, zoo, QRM, plotly, and psych
+2. 
+* :
+* :
+* :
 
 ### Portfolio Weights
 
 For the working capital accounts:
 
-No constraints:
+No constraints??
+
+* :... million denominated in euros 
+* :... million in nickel
+* :... million in copper
+* :... million in aluminium
+
+
+With constraints - specify the constraint??
+
+* :... million denominated in euros 
+* :... million in nickel
+* :... million in copper
+* :... million in aluminium
+
+
+** SAMPLE CODE OUTPUT **
+
+The weights for the Markowitz tangency [default] portfolio ("*") are
+
 ```{r echo = FALSE}
 library(scales)
 weights[ind,]
-name <- colnames(weights)
-posn <- ifelse((weights[ind,]<0), "go short (sell)", "go long, (buy)")
-value <- percent(abs(weights[ind,]))
-weights[ind,]*250000000
+name = colnames(weights)
+posn = ifelse((weights[ind,]<0), "go short (sell)", "go long, (buy)")
+value = percent(abs(weights[ind,]))
 ```
 
-* 250,000,000 denominated in euros
-* Buy 250,236,183 in nickel
-* Sell 1,577,898 in copper
-* Buy 1,341,715 in aluminium
+The weights for the Markowitz tangency [min var]  portfolio  ("-") are
 
-
-With constraints:
-
-Constraint: Minimum Variance Portfolio
 ```{r echo = FALSE}
 library(scales)
 weights[ind2,]
-name <- colnames(weights)
-posn <- ifelse((weights[ind2,]<0), "go short (sell)", "go long, (buy)")
-value <- percent(abs(weights[ind2,]))
-weights[ind2,]*250000000
+name = colnames(weights)
+posn = ifelse((weights[ind2,]<0), "go short (sell)", "go long, (buy)")
+value = percent(abs(weights[ind2,]))
 ```
 
-* 250,000,000 denominated in euros
-* Buy 21,438,648 in nickel
-* Buy 113,727,083 in copper
-* Buy 114,834,269 in aluminium
+The weights for the Markowitz tangency [no short] portfolio ("+") are
 
-Constraint: No Short Portfolio
 ```{r echo = FALSE}
 library(scales)
 weights.x[inx,]
-name <- colnames(weights.x)
-posn <- ifelse((weights.x[inx,]<0), "go short (sell)", "go long, (buy)")
-value <- percent(abs(weights.x[inx,]))
-weights.x[inx,]*250000000
+name = colnames(weights.x)
+posn = ifelse((weights.x[inx,]<0), "go short (sell)", "go long, (buy)")
+value = percent(abs(weights.x[inx,]))
 ```
-
-* 250,000,000 million denominated in euros
-* Buy 233,053,759 in nickel
-* Buy 7,081,369 in copper
-* Buy 9,864,872 in aluminum
 
 
 ### Business Remarks
@@ -1155,27 +1161,12 @@ weights.x[inx,]*250000000
 
 - There is a strong correlation (0.??) between Metal-A (?) and Metal-B (?) due to shared applications.
 
-- Creation of cupronickel alloy which is used for desalinisation due its high resistant to corrosion, minting, armaments, marine engineering, electrical applications, and many others, e.g. the repair of fan blades found in geothermal power plants.
-
+- Creation of cupronickel alloy which is used for desalinisation due its high resistant to corrosion, minting, armaments, marine engineering, electrical applications, and many others, e.g. the repair of fan blades found in geothermal power plants. 
+    
 - Another example would be purchasing Copper from Codelco in Santiago, Chile and tramping it to General Electric, Schnectady, NY as part of GE's purchasing and procurement wing of their supply chain.  
 
 - Aluminium is a metal which is used in a plethora of industries and markets.  It's relatively stable price is testament to this.  Moving aluminium from Brasil to West Coast USA for aircraft supply chains is a safe, long term freight line that ship owner's can use to mitigate risk.
 
-
-
-- The working capital account of \$250 million euro should be allocated as follows: buy \$250.24 million in nickel, sell \$1.57 million in copper, buy \$1.33 million in aluminium.
-
-- There is a strong correlation (.89) between nickel and copper.  This was initially expected since both of these metals are used in similar applications.
-
-- Creation of cupronickel alloy which is used for desalinisation due its high resistant to corrosion, minting, armaments, marine engineering, electrical applications, and many others, e.g. the repair of fan blades found in geothermal power plants. 
-    
-- Another example would be purchasing Copper from Codelco in Santiago, Chile and tramping it to General Electric, Schnectady, NY as part of GE's purchasing and procurement wing of their supply chain.
-
-- Aluminium is a metal which is used in a plethora of industries and markets.  It's relatively stable price is testament to this.  Moving aluminium from Brasil to West Coast USA for aircraft supply chains is a safe, long term freight line that ship owner's can use to mitigate risk.
-
-Business Questions:
-
-Ultimately all of these measures strongly impact the freight company. The size and timing of the shipping arrangements are going to be greatly influence by how these commodities are performing on global markets. If commodities are performing well, the size of shipments are going to be greater and the timing of these shipments will not only be more important, but hopefully happening at a higher frequency to generate more business. With great performance comes higher value, and with higher value business with customers might project to be more abundant. It is important to consider the supply and demand as the value of these metal commodities fluctuates. You never want to get in a bind with an excess of supply when demand is too low or a shortage when demand is too high. This will only stall business and ultimately create a stronger financial burden. It is very important to have a financial analyst on staff to watch these commomdities carefully. Our risk numbers look small now, but for a freight company ordering millions of dollars in product, losses can add up quickly.
 
 
 
